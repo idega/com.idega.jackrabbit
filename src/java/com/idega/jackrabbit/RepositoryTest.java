@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.rmi.AccessException;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -16,12 +15,12 @@ import javax.jcr.Credentials;
 import javax.jcr.InvalidItemStateException;
 import javax.jcr.ItemExistsException;
 import javax.jcr.LoginException;
-import javax.jcr.NoSuchWorkspaceException;
 import javax.jcr.Node;
 import javax.jcr.NodeIterator;
 import javax.jcr.PathNotFoundException;
 import javax.jcr.Property;
 import javax.jcr.PropertyIterator;
+import javax.jcr.PropertyType;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
@@ -47,6 +46,7 @@ import javax.naming.NamingException;
 
 import org.apache.jackrabbit.core.TransientRepository;
 import org.apache.jackrabbit.core.jndi.RegistryHelper;
+import org.apache.jackrabbit.rmi.client.RemoteRepositoryException;
 import org.apache.jackrabbit.rmi.remote.RemoteRepository;
 import org.apache.jackrabbit.rmi.repository.RMIRemoteRepository;
 import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
@@ -61,14 +61,24 @@ public class RepositoryTest {
 		
 		
 		RepositoryTest tester = new RepositoryTest();
-		Repository repository = tester.getEmbeddedRepository();
+		Repository repository = tester.getRemoteRepository();
 		
-		tester.runCommandLineQuery(repository);
+		tester.dumpStructure(repository);
+		
+		
 		
 	}
 	
 	
-	   private  void runCommandLineQuery(Repository repository) throws IOException, RepositoryException {
+	public void dumpStructure(Repository repository) throws Exception {
+		// TODO Auto-generated method stub
+		Session session=getReadonlySession(repository);
+		Node root = session.getRootNode();
+		dump(root,true);
+	}
+
+
+	private  void runCommandLineQuery(Repository repository) throws IOException, RepositoryException {
 	        //Repository repository=getRepository();
 	        Session session=getReadonlySession(repository);
 	        Workspace workspace=session.getWorkspace();
@@ -103,7 +113,11 @@ public class RepositoryTest {
 	        logout(session);
 	    }
 
-	    private void  dump(Node node) throws RepositoryException {
+	private void  dump(Node node) throws RepositoryException {
+		dump(node,false);
+	}
+	
+	    private void  dump(Node node,boolean children) throws RepositoryException {
 	        StringBuilder sb=new StringBuilder();
 	        String sep=",";
 	        sb.append(node.getName());
@@ -113,14 +127,32 @@ public class RepositoryTest {
 	            Property prop=propIterator.nextProperty();
 	            sb.append(sep);
 	            try{
-	            	sb.append("@"+prop.getName()+"=\""+prop.getString()+"\"");
+	            	String propString;
+	            	
+	            	if(prop.getValue().getType()==PropertyType.BINARY){
+	            		propString="BINARY";
+	            	}
+	            	else{
+	            		propString=prop.getString();
+	            	}
+	            	sb.append("@"+prop.getName()+"=\""+propString+"\"");
 	            }
 	            catch(ValueFormatException e){
 	            	//e.printStackTrace();
 	            }
+	            catch(RemoteRepositoryException re){
+	            	//re.printStackTrace();
+	            }
 	        }
 	        sb.append("]");
 	        System.out.println(sb.toString());
+	        if(children){
+	        	NodeIterator nodeIterator = node.getNodes();
+	        	while(nodeIterator.hasNext()){
+	        		Node child = nodeIterator.nextNode();
+	        		dump(child,true);
+	        	}
+	        }
 	    }
 
 
