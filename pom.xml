@@ -3,12 +3,12 @@
   <parent>
   	<groupId>com.idega.block.platform</groupId>
   	<artifactId>com.idega.block.platform</artifactId>
-  	<version>4.0.2-SNAPSHOT</version>
+  	<version>4.1.3-SNAPSHOT</version>
   </parent>
   <packaging>jar</packaging>
   <groupId>com.idega.block.experimental</groupId>
   <artifactId>com.idega.jackrabbit</artifactId>
-  <version>4.0.2-SNAPSHOT</version>
+  <version>4.1.3-SNAPSHOT</version>
   <name>Apache Jackrabbit integration</name>
   <scm>
     <connection>scm:cvs:ext:${user.name}@code.idega.com:/idega/cvs:${groupId}/${artifactId}/</connection>
@@ -44,67 +44,68 @@
    <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-api</artifactId>
-      <version>1.4</version>
+      <version>1.5.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-core</artifactId>
-      <version>1.4</version>
+      <version>1.5.6</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-jcr-commons</artifactId>
-      <version>1.4</version>
+      <version>1.5.5</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-jcr-tests</artifactId>
-      <version>1.4</version>
+      <version>1.5.0</version>
       <type>jar</type>
     </dependency>
-    <!--dependency>
-      <groupId>org.apache.jackrabbit</groupId>
-      <artifactId>jackrabbit-test-extractors</artifactId>
-      <version>1.4</version>
-      <type>jar</type>
-    </dependency-->
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
-      <artifactId>jackrabbit-jcr-commons</artifactId>
-      <version>1.4</version>
+      <artifactId>jackrabbit-text-extractors</artifactId>
+      <version>1.5.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-jcr-rmi</artifactId>
-      <version>1.4</version>
+      <version>1.5.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-jcr-server</artifactId>
-      <version>1.4</version>
+      <version>1.5.6</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jackrabbit</groupId>
+      <artifactId>jackrabbit-jcr-webdav</artifactId>
+      <version>1.1</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-webdav</artifactId>
-      <version>1.4</version>
+      <version>1.5.5</version>
       <type>jar</type>
     </dependency>
+    
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-classloader</artifactId>
-      <version>1.4</version>
+      <version>1.5.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-webapp</artifactId>
-      <version>1.4</version>
+      <version>1.5.6</version>
       <type>jar</type>
     </dependency>
     

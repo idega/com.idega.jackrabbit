@@ -13,6 +13,10 @@ import org.apache.jackrabbit.core.HierarchyManager;
 import org.apache.jackrabbit.core.ItemId;
 import org.apache.jackrabbit.core.security.AMContext;
 import org.apache.jackrabbit.core.security.AccessManager;
+import org.apache.jackrabbit.core.security.authorization.AccessControlProvider;
+import org.apache.jackrabbit.core.security.authorization.WorkspaceAccessManager;
+import org.apache.jackrabbit.spi.Name;
+import org.apache.jackrabbit.spi.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,9 +53,8 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     /**
      * {@inheritDoc}
      */
-    public void init(AMContext context)
-            throws AccessDeniedException, Exception {
-        if (initialized) {
+    public void init(AMContext context, AccessControlProvider arg1, WorkspaceAccessManager arg2) throws AccessDeniedException, Exception {
+    	if (initialized) {
             throw new IllegalStateException("already initialized");
         }
 
@@ -165,4 +168,25 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     	
     	return false;
     }
+
+	public boolean canRead(Path arg0) throws RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+
+	public boolean isGranted(Path arg0, int arg1) throws RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public boolean isGranted(Path arg0, Name arg1, int arg2) throws RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public void init(AMContext context) throws AccessDeniedException, Exception {
+		init(context,null,null);
+		
+	}
 }
