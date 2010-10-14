@@ -1,4 +1,4 @@
-package com.idega.jackrabbit;
+package com.idega.jackrabbit.test;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -53,23 +53,29 @@ import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
 import org.apache.jackrabbit.value.DateValue;
 import org.apache.jackrabbit.value.StringValue;
 
+/**
+ * Old class, should be re-factored.
+ *
+ * @author valdas
+ *
+ */
 public class RepositoryTest {
 
 	public static void main(String[] args) throws Exception{
 		// TODO Auto-generated method stub
 		//startEmbeddedRepository();
-		
-		
+
+
 		RepositoryTest tester = new RepositoryTest();
 		Repository repository = tester.getRemoteRepository();
-		
+
 		tester.dumpStructure(repository);
-		
-		
-		
+
+
+
 	}
-	
-	
+
+
 	public void dumpStructure(Repository repository) throws Exception {
 		// TODO Auto-generated method stub
 		Session session=getReadonlySession(repository);
@@ -116,7 +122,7 @@ public class RepositoryTest {
 	private void  dump(Node node) throws RepositoryException {
 		dump(node,false);
 	}
-	
+
 	    private void  dump(Node node,boolean children) throws RepositoryException {
 	        StringBuilder sb=new StringBuilder();
 	        String sep=",";
@@ -128,7 +134,7 @@ public class RepositoryTest {
 	            sb.append(sep);
 	            try{
 	            	String propString;
-	            	
+
 	            	if(prop.getValue().getType()==PropertyType.BINARY){
 	            		propString="BINARY";
 	            	}
@@ -163,14 +169,14 @@ public class RepositoryTest {
 			ConstraintViolationException, AccessDeniedException,
 			InvalidItemStateException {
 		Credentials credentials = new SimpleCredentials("", "".toCharArray());
-		
+
 		Session session = repository.login(credentials);
 		//session.getN
 		Node rootNode = session.getRootNode();
-		
+
 		NodeIterator nodeIterator = rootNode.getNodes();
 		while(nodeIterator.hasNext()) {
-		
+
 			Node node = nodeIterator.nextNode();
 			String nodeName = node.getName();
 			//Node node = rootNode.getNode("testfolder");
@@ -179,72 +185,72 @@ public class RepositoryTest {
 				Property property = iterator.nextProperty();
 				String name = property.getName();
 				Value value = property.getValue();
-				
+
 				System.out.println("NodeName="+nodeName+",propertyname="+name+", value="+value.getString());
 			}
 			//Node folderNode = rootNode.addNode("nt:folder", "testfolder");
 		}
-		
+
 		Node node = rootNode.addNode("tester", "nt:folder");
 		//node.setProperty("jcr:primaryType", "nt:folder");
 		//node.save();
 		session.save();
 	}
-	
+
 	/**
 	 * See http://www.artima.com/lejava/articles/contentrepository3.html
-	 * @throws Exception 
+	 * @throws Exception
 	 */
 	public  void contentTest(Repository r) throws Exception{
 
-		//Create a new repository session, after authenticating 
-		Session session = 
+		//Create a new repository session, after authenticating
+		Session session =
 		   r.login(new SimpleCredentials("userid", "".toCharArray()), null);
 
-		//Obtain the root node 
+		//Obtain the root node
 		Node rn = session.getRootNode();
 
-		//Create and add a new blog node. The node's type will be "blog". 
+		//Create and add a new blog node. The node's type will be "blog".
 		Node n = rn.addNode("blog");
-		n.setProperty("blogtitle",  
+		n.setProperty("blogtitle",
 		  new StringValue("Chasing Jackrabbit article"));
 		n.setProperty("blogauthor", new StringValue("Joe Blogger"));
 		n.setProperty("blogdate", new DateValue(Calendar.getInstance()));
-		n.setProperty("blogtext", 
+		n.setProperty("blogtext",
 		    new StringValue("JCR is an interesting API to lo learn."));
 		session.save();
-		
+
 		QueryManager qm = contentTestPart2(session);
-		
+
 		n = contentTestPart3(session, rn);
-		
+
 		contentTestPart4(session, qm);
-		
+
 		contentTestPart5(n);
-		
+
 	}
 
 	private  Repository getJNDIRepository() throws NamingException,
 			RepositoryException {
-		//A repository config file. 
+		//A repository config file.
 		String configFile = "repotest/repository.xml";
-		//Filesystem for Jackrabbit repository 
+		//Filesystem for Jackrabbit repository
 		String repHomeDir = "repotest";
 
 		//Register the repository in JNDI
 		Hashtable env = new Hashtable();
 		env.put(Context.INITIAL_CONTEXT_FACTORY,
-		   
+
 		"org.apache.jackrabbit.core.jndi.provider.DummyInitialContextFactory");
 		env.put(Context.PROVIDER_URL, "localhost");
 		InitialContext ctx = new InitialContext(env);
-		RegistryHelper.registerRepository(ctx, 
-		       "repo", 
-		        configFile, 
-		        repHomeDir, 
+		RegistryHelper.registerRepository(ctx,
+		       "repo",
+		        configFile,
+		        repHomeDir,
 		        true);
 
-		//Obtain the repository through a JNDI lookup 
+		//Obtain the repository through a JNDI lookup
 		Repository r = (Repository)ctx.lookup("repo");
 		return r;
 	}
@@ -260,16 +266,16 @@ public class RepositoryTest {
 
 		   Version v = ito.nextVersion();
 
-		   //The version node will have a "frozen" child node that contains 
+		   //The version node will have a "frozen" child node that contains
 		   //the corresponding version's node data
 		   NodeIterator it = v.getNodes("jcr:frozenNode");
 
 		   if (it.hasNext()) {
 
 		     Node no = it.nextNode();
-		     System.out.println("Version saved on " + 
-		        v.getCreated().getTime().toString() + 
-		        " has the following message: " + 
+		     System.out.println("Version saved on " +
+		        v.getCreated().getTime().toString() +
+		        " has the following message: " +
 		        no.getProperty("blogtext").getString());
 		   }
 		}
@@ -279,23 +285,23 @@ public class RepositoryTest {
 			throws RepositoryException, InvalidQueryException,
 			PathNotFoundException, ValueFormatException {
 		//Part 2 - Query Blog
-		
+
 		Workspace ws = session.getWorkspace();
 		QueryManager qm = ws.getQueryManager();
 
 		//Specify a query using the XPATH query language
-		Query q = 
+		Query q =
 		   qm.createQuery("//blog[@blogauthor = 'Joe Blogger']", Query.XPATH);
 		QueryResult res = q.execute();
 
-		//Obtain a node iterator 
+		//Obtain a node iterator
 		NodeIterator it = res.getNodes();
 
 		while (it.hasNext()) {
 
 		   Node n = it.nextNode();
 		   Property prop = n.getProperty("blogtitle");
-		   System.out.println("Found blog entry with title: " 
+		   System.out.println("Found blog entry with title: "
 		      + prop.getString());
 		}
 		return qm;
@@ -308,14 +314,14 @@ public class RepositoryTest {
 			AccessDeniedException, InvalidItemStateException {
 		//Part 3 - Versioned Blog
 
-		
+
 		Node n = rn.addNode("versionedblog");
 
 		n.addMixin("mix:versionable");
 		n.setProperty("blogtitle",  new StringValue("Versioned rabbit") );
 		n.setProperty("blogauthor", new StringValue("Joe Blogger"));
 		n.setProperty("blogdate", new DateValue(Calendar.getInstance()));
-		n.setProperty("blogtext", 
+		n.setProperty("blogtext",
 		   new StringValue("JCR is an interesting API to lo learn."));
 
 		session.save();
@@ -330,8 +336,8 @@ public class RepositoryTest {
 			ItemExistsException, InvalidItemStateException,
 			NoSuchNodeTypeException {
 		//Part 4 - Query versioned blog
-		
-		Query q = 
+
+		Query q =
 			   qm.createQuery("//versionedblog[@blogauthor = 'Joe Blogger' and @blogtitle = 'Versioned rabbit']", Query.XPATH);
 
 			QueryResult res = q.execute();
@@ -342,27 +348,27 @@ public class RepositoryTest {
 
 			   Node n = it.nextNode();
 
-			   //Check out the current node 
+			   //Check out the current node
 			   n.checkout();
 
-			   //Set a new property value for blogtext 
+			   //Set a new property value for blogtext
 			   n.setProperty("blogtext", new StringValue("Edited blog text"));
 
-			   //Save the new version. 
+			   //Save the new version.
 			   session.save();
 
-			   //Check the new vesion in, resulting in a new item being added 
-			   //the the node's version history 
+			   //Check the new vesion in, resulting in a new item being added
+			   //the the node's version history
 			   n.checkin();
 			}
 	}
 
 	private  Repository getRemoteRepository() {
 		String url = "rmi://localhost:1099/jackrabbit.repository";
-		
+
 		//ClientRepositoryFactory factory = new ClientRepositoryFactory();
 		//Repository repository = factory.getRepository(url);
-		
+
 		Repository repository =
 		    new RMIRemoteRepository("//localhost/jackrabbit.repository");
 		return repository;
@@ -377,8 +383,8 @@ public class RepositoryTest {
 		reg.rebind("jackrabbit", remote);
 		return srepository;
 	}
-	
-	
+
+
     public Repository getRepository() throws IOException {
         return new TransientRepository();
     }

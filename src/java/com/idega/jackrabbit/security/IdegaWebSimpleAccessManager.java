@@ -1,4 +1,4 @@
-package com.idega.jackrabbit;
+package com.idega.jackrabbit.security;
 
 import java.security.Principal;
 import java.util.Set;
@@ -10,20 +10,21 @@ import javax.jcr.RepositoryException;
 import javax.security.auth.Subject;
 
 import org.apache.jackrabbit.core.HierarchyManager;
-import org.apache.jackrabbit.core.ItemId;
+import org.apache.jackrabbit.core.id.ItemId;
 import org.apache.jackrabbit.core.security.AMContext;
 import org.apache.jackrabbit.core.security.AccessManager;
 import org.apache.jackrabbit.core.security.authorization.AccessControlProvider;
 import org.apache.jackrabbit.core.security.authorization.WorkspaceAccessManager;
 import org.apache.jackrabbit.spi.Name;
 import org.apache.jackrabbit.spi.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/**
+ * This class should be considered as example only!
+ *
+ * @author valdas
+ *
+ */
 public class IdegaWebSimpleAccessManager implements AccessManager {
-
-
-    private static Logger log = LoggerFactory.getLogger(IdegaWebSimpleAccessManager.class);
 
     /**
      * Subject whose access rights this AccessManager should reflect
@@ -50,10 +51,8 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     }
 
     //--------------------------------------------------------< AccessManager >
-    /**
-     * {@inheritDoc}
-     */
-    public void init(AMContext context, AccessControlProvider arg1, WorkspaceAccessManager arg2) throws AccessDeniedException, Exception {
+    @Override
+	public void init(AMContext context, AccessControlProvider arg1, WorkspaceAccessManager arg2) throws AccessDeniedException, Exception {
     	if (initialized) {
             throw new IllegalStateException("already initialized");
         }
@@ -61,7 +60,7 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         subject = context.getSubject();
         hierMgr = context.getHierarchyManager();
         Set<Principal> ps = subject.getPrincipals();
-        
+
         /*
         Properties rolemaps = new Properties();
         String rolemaploc = context.getHomeDir() + "/rolemappings.properties";
@@ -69,7 +68,7 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         rolemaps.load(rolefs);
         rolefs.close();
         log.info("Load jbossgroup role mappings from " + rolemaploc);
-        
+
         for (Principal p : ps){
 //        	log.warn(p.getName());
         	if (p.getName().equalsIgnoreCase("Roles")){
@@ -80,7 +79,7 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         		while (em.hasMoreElements()) {
         			org.jboss.security.SimplePrincipal myp = em.nextElement();
         			String role = rolemaps.getProperty(myp.getName());
-        			
+
         			if (role != null && role.equalsIgnoreCase("full")){
         				system = true;
         			}else if (role != null && role.equalsIgnoreCase("read")){
@@ -89,7 +88,7 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
 				}
         	}
         }
-        
+
         */
 
 
@@ -100,7 +99,8 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     /**
      * {@inheritDoc}
      */
-    public synchronized void close() throws Exception {
+    @Override
+	public synchronized void close() throws Exception {
         if (!initialized) {
             throw new IllegalStateException("not initialized");
         }
@@ -111,7 +111,8 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     /**
      * {@inheritDoc}
      */
-    public void checkPermission(ItemId id, int permissions)
+    @Override
+	public void checkPermission(ItemId id, int permissions)
             throws AccessDeniedException, ItemNotFoundException,
             RepositoryException {
         if (!initialized) {
@@ -136,7 +137,8 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     /**
      * {@inheritDoc}
      */
-    public boolean isGranted(ItemId id, int permissions)
+    @Override
+	public boolean isGranted(ItemId id, int permissions)
             throws ItemNotFoundException, RepositoryException {
         if (!initialized) {
             throw new IllegalStateException("not initialized");
@@ -158,35 +160,44 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         return false;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public boolean canAccess(String workspaceName)
+    @Override
+	public boolean canAccess(String workspaceName)
             throws NoSuchWorkspaceException, RepositoryException {
-    	
+
     	if (system || anonymous) return true;
-    	
+
     	return false;
     }
 
+	@Override
 	public boolean canRead(Path arg0) throws RepositoryException {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
 
+	@Override
 	public boolean isGranted(Path arg0, int arg1) throws RepositoryException {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
+	@Override
 	public boolean isGranted(Path arg0, Name arg1, int arg2) throws RepositoryException {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
+	@Override
 	public void init(AMContext context) throws AccessDeniedException, Exception {
 		init(context,null,null);
-		
+
+	}
+
+	@Override
+	public void checkPermission(Path absPath, int permissions)
+			throws AccessDeniedException, RepositoryException {
+		// TODO Auto-generated method stub
+
 	}
 }

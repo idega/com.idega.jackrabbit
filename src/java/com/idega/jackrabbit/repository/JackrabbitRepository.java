@@ -74,8 +74,6 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	@Autowired
 	private AuthenticationBusiness authenticationBusiness;
 
-	public JackrabbitRepository() {}
-
 	@Override
 	public void initializeRepository(InputStream configStream, String repositoryName) throws Exception {
 		try {
@@ -210,9 +208,6 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 			versionManager.checkin(file.getPath());
 			return file;
 		} finally {
-			if (binary != null) {
-				binary.dispose();
-			}
 			logout(session);
 		}
 	}
