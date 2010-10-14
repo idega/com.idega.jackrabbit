@@ -208,6 +208,10 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 			versionManager.checkin(file.getPath());
 			return file;
 		} finally {
+			if (binary != null) {
+				binary.dispose();
+			}
+
 			logout(session);
 		}
 	}
@@ -304,14 +308,19 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 			}
 
 			String[] pathParts = nodeName.split(CoreConstants.SLASH);
-			String name = pathParts[0];
-			node = noType ? parent.addNode(name) : parent.addNode(name, type);
-			setDefaultProperties(node);
+			for (int i = 0; i < pathParts.length; i++) {
+				String name = pathParts[i];
+				node = getNode(parent, name, false, type, versionManager);
+				if (node == null) {
+					node = noType ? parent.addNode(name) : parent.addNode(name, type);
+					setDefaultProperties(node);
+				}
 
-			for (int i = 1; i < pathParts.length; i++) {
-				name = pathParts[i];
-				node = noType ? node.addNode(name) : node.addNode(name, type);
-				setDefaultProperties(node);
+				if (node == null) {
+					throw new RepositoryException("Node " + name + " can not be added to " + parent);
+				}
+
+				parent = node;
 			}
 		}
 
