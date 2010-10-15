@@ -211,6 +211,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 			if (binary != null) {
 				binary.dispose();
 			}
+			IOUtil.close(content);
 
 			logout(session);
 		}
