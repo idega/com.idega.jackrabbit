@@ -1,20 +1,11 @@
 package com.idega.jackrabbit.test;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.rmi.AccessException;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 import java.util.Calendar;
-import java.util.Hashtable;
 
 import javax.jcr.AccessDeniedException;
-import javax.jcr.Credentials;
 import javax.jcr.InvalidItemStateException;
 import javax.jcr.ItemExistsException;
-import javax.jcr.LoginException;
 import javax.jcr.Node;
 import javax.jcr.NodeIterator;
 import javax.jcr.PathNotFoundException;
@@ -26,7 +17,6 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
 import javax.jcr.UnsupportedRepositoryOperationException;
-import javax.jcr.Value;
 import javax.jcr.ValueFormatException;
 import javax.jcr.Workspace;
 import javax.jcr.lock.LockException;
@@ -40,16 +30,10 @@ import javax.jcr.version.Version;
 import javax.jcr.version.VersionException;
 import javax.jcr.version.VersionHistory;
 import javax.jcr.version.VersionIterator;
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
 
 import org.apache.jackrabbit.core.TransientRepository;
-import org.apache.jackrabbit.core.jndi.RegistryHelper;
 import org.apache.jackrabbit.rmi.client.RemoteRepositoryException;
-import org.apache.jackrabbit.rmi.remote.RemoteRepository;
 import org.apache.jackrabbit.rmi.repository.RMIRemoteRepository;
-import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
 import org.apache.jackrabbit.value.DateValue;
 import org.apache.jackrabbit.value.StringValue;
 
@@ -84,44 +68,44 @@ public class RepositoryTest {
 	}
 
 
-	private  void runCommandLineQuery(Repository repository) throws IOException, RepositoryException {
-	        //Repository repository=getRepository();
-	        Session session=getReadonlySession(repository);
-	        Workspace workspace=session.getWorkspace();
-	        QueryManager qm=workspace.getQueryManager();
-	        BufferedReader reader=new BufferedReader(new InputStreamReader(System.in));
-	        for(;;) {
-	            System.out.print("JCRQL> ");
-	            String queryString=reader.readLine();
-	            if(queryString.equals("quit")) {
-	                break;
-	            }
-	            if(queryString.length()==0 || queryString.startsWith("#")) {
-	                continue;
-	            }
+//	private  void runCommandLineQuery(Repository repository) throws IOException, RepositoryException {
+//	        //Repository repository=getRepository();
+//	        Session session=getReadonlySession(repository);
+//	        Workspace workspace=session.getWorkspace();
+//	        QueryManager qm=workspace.getQueryManager();
+//	        BufferedReader reader=new BufferedReader(new InputStreamReader(System.in));
+//	        for(;;) {
+//	            System.out.print("JCRQL> ");
+//	            String queryString=reader.readLine();
+//	            if(queryString.equals("quit")) {
+//	                break;
+//	            }
+//	            if(queryString.length()==0 || queryString.startsWith("#")) {
+//	                continue;
+//	            }
+//
+//	            int resultCounter=0;
+//	            try {
+//	                Query query=qm.createQuery(queryString, Query.XPATH);
+//	                QueryResult queryResult=query.execute();
+//	                NodeIterator nodeIterator=queryResult.getNodes();
+//	                while(nodeIterator.hasNext()) {
+//	                    Node node=nodeIterator.nextNode();
+//	                    dump(node);
+//	                    resultCounter++;
+//	                }
+//	            } catch(Exception e) {
+//	                e.printStackTrace();
+//	            }
+//
+//	            System.out.println("result count: "+resultCounter);
+//	        }
+//	        logout(session);
+//	    }
 
-	            int resultCounter=0;
-	            try {
-	                Query query=qm.createQuery(queryString, Query.XPATH);
-	                QueryResult queryResult=query.execute();
-	                NodeIterator nodeIterator=queryResult.getNodes();
-	                while(nodeIterator.hasNext()) {
-	                    Node node=nodeIterator.nextNode();
-	                    dump(node);
-	                    resultCounter++;
-	                }
-	            } catch(Exception e) {
-	                e.printStackTrace();
-	            }
-
-	            System.out.println("result count: "+resultCounter);
-	        }
-	        logout(session);
-	    }
-
-	private void  dump(Node node) throws RepositoryException {
-		dump(node,false);
-	}
+//	private void  dump(Node node) throws RepositoryException {
+//		dump(node,false);
+//	}
 
 	    private void  dump(Node node,boolean children) throws RepositoryException {
 	        StringBuilder sb=new StringBuilder();
@@ -162,40 +146,40 @@ public class RepositoryTest {
 	    }
 
 
-	private  void simpleNodeTest(Repository repository)
-			throws LoginException, RepositoryException, ValueFormatException,
-			ItemExistsException, PathNotFoundException,
-			NoSuchNodeTypeException, LockException, VersionException,
-			ConstraintViolationException, AccessDeniedException,
-			InvalidItemStateException {
-		Credentials credentials = new SimpleCredentials("", "".toCharArray());
-
-		Session session = repository.login(credentials);
-		//session.getN
-		Node rootNode = session.getRootNode();
-
-		NodeIterator nodeIterator = rootNode.getNodes();
-		while(nodeIterator.hasNext()) {
-
-			Node node = nodeIterator.nextNode();
-			String nodeName = node.getName();
-			//Node node = rootNode.getNode("testfolder");
-			PropertyIterator iterator = node.getProperties();
-			while(iterator.hasNext()) {
-				Property property = iterator.nextProperty();
-				String name = property.getName();
-				Value value = property.getValue();
-
-				System.out.println("NodeName="+nodeName+",propertyname="+name+", value="+value.getString());
-			}
-			//Node folderNode = rootNode.addNode("nt:folder", "testfolder");
-		}
-
-		Node node = rootNode.addNode("tester", "nt:folder");
-		//node.setProperty("jcr:primaryType", "nt:folder");
-		//node.save();
-		session.save();
-	}
+//	private  void simpleNodeTest(Repository repository)
+//			throws LoginException, RepositoryException, ValueFormatException,
+//			ItemExistsException, PathNotFoundException,
+//			NoSuchNodeTypeException, LockException, VersionException,
+//			ConstraintViolationException, AccessDeniedException,
+//			InvalidItemStateException {
+//		Credentials credentials = new SimpleCredentials("", "".toCharArray());
+//
+//		Session session = repository.login(credentials);
+//		//session.getN
+//		Node rootNode = session.getRootNode();
+//
+//		NodeIterator nodeIterator = rootNode.getNodes();
+//		while(nodeIterator.hasNext()) {
+//
+//			Node node = nodeIterator.nextNode();
+//			String nodeName = node.getName();
+//			//Node node = rootNode.getNode("testfolder");
+//			PropertyIterator iterator = node.getProperties();
+//			while(iterator.hasNext()) {
+//				Property property = iterator.nextProperty();
+//				String name = property.getName();
+//				Value value = property.getValue();
+//
+//				System.out.println("NodeName="+nodeName+",propertyname="+name+", value="+value.getString());
+//			}
+//			//Node folderNode = rootNode.addNode("nt:folder", "testfolder");
+//		}
+//
+//		Node node = rootNode.addNode("tester", "nt:folder");
+//		//node.setProperty("jcr:primaryType", "nt:folder");
+//		//node.save();
+//		session.save();
+//	}
 
 	/**
 	 * See http://www.artima.com/lejava/articles/contentrepository3.html
@@ -230,35 +214,36 @@ public class RepositoryTest {
 
 	}
 
-	private  Repository getJNDIRepository() throws NamingException,
-			RepositoryException {
-		//A repository config file.
-		String configFile = "repotest/repository.xml";
-		//Filesystem for Jackrabbit repository
-		String repHomeDir = "repotest";
-
-		//Register the repository in JNDI
-		Hashtable env = new Hashtable();
-		env.put(Context.INITIAL_CONTEXT_FACTORY,
-
-		"org.apache.jackrabbit.core.jndi.provider.DummyInitialContextFactory");
-		env.put(Context.PROVIDER_URL, "localhost");
-		InitialContext ctx = new InitialContext(env);
-		RegistryHelper.registerRepository(ctx,
-		       "repo",
-		        configFile,
-		        repHomeDir,
-		        true);
-
-		//Obtain the repository through a JNDI lookup
-		Repository r = (Repository)ctx.lookup("repo");
-		return r;
-	}
+//	private  Repository getJNDIRepository() throws NamingException,
+//			RepositoryException {
+//		//A repository config file.
+//		String configFile = "repotest/repository.xml";
+//		//Filesystem for Jackrabbit repository
+//		String repHomeDir = "repotest";
+//
+//		//Register the repository in JNDI
+//		Hashtable env = new Hashtable();
+//		env.put(Context.INITIAL_CONTEXT_FACTORY,
+//
+//		"org.apache.jackrabbit.core.jndi.provider.DummyInitialContextFactory");
+//		env.put(Context.PROVIDER_URL, "localhost");
+//		InitialContext ctx = new InitialContext(env);
+//		RegistryHelper.registerRepository(ctx,
+//		       "repo",
+//		        configFile,
+//		        repHomeDir,
+//		        true);
+//
+//		//Obtain the repository through a JNDI lookup
+//		Repository r = (Repository)ctx.lookup("repo");
+//		return r;
+//	}
 
 	 void contentTestPart5(Node n)
 			throws UnsupportedRepositoryOperationException,
 			RepositoryException, ValueFormatException, PathNotFoundException {
 		//Obtain the blog node's version history
+		@SuppressWarnings("deprecation")
 		VersionHistory history = n.getVersionHistory();
 		VersionIterator ito = history.getAllVersions();
 
@@ -290,6 +275,7 @@ public class RepositoryTest {
 		QueryManager qm = ws.getQueryManager();
 
 		//Specify a query using the XPATH query language
+		@SuppressWarnings("deprecation")
 		Query q =
 		   qm.createQuery("//blog[@blogauthor = 'Joe Blogger']", Query.XPATH);
 		QueryResult res = q.execute();
@@ -328,7 +314,8 @@ public class RepositoryTest {
 		return n;
 	}
 
-	 void contentTestPart4(Session session, QueryManager qm)
+	 @SuppressWarnings("deprecation")
+	void contentTestPart4(Session session, QueryManager qm)
 			throws InvalidQueryException, RepositoryException,
 			UnsupportedRepositoryOperationException, LockException,
 			ValueFormatException, VersionException,
@@ -364,7 +351,7 @@ public class RepositoryTest {
 	}
 
 	private  Repository getRemoteRepository() {
-		String url = "rmi://localhost:1099/jackrabbit.repository";
+//		String url = "rmi://localhost:1099/jackrabbit.repository";
 
 		//ClientRepositoryFactory factory = new ClientRepositoryFactory();
 		//Repository repository = factory.getRepository(url);
@@ -374,15 +361,15 @@ public class RepositoryTest {
 		return repository;
 	}
 
-	private  Repository getEmbeddedRepository() throws IOException,
-			RemoteException, AccessException {
-		Repository srepository = new TransientRepository();
-		ServerAdapterFactory sfactory = new ServerAdapterFactory();
-		RemoteRepository remote = sfactory.getRemoteRepository(srepository);
-		Registry reg = LocateRegistry.createRegistry(1100);
-		reg.rebind("jackrabbit", remote);
-		return srepository;
-	}
+//	private  Repository getEmbeddedRepository() throws IOException,
+//			RemoteException, AccessException {
+//		Repository srepository = new TransientRepository();
+//		ServerAdapterFactory sfactory = new ServerAdapterFactory();
+//		RemoteRepository remote = sfactory.getRemoteRepository(srepository);
+//		Registry reg = LocateRegistry.createRegistry(1100);
+//		reg.rebind("jackrabbit", remote);
+//		return srepository;
+//	}
 
 
     public Repository getRepository() throws IOException {
