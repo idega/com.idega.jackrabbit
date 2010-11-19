@@ -49,7 +49,7 @@ import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.authentication.AuthenticationBusiness;
 import com.idega.repository.bean.RepositoryItemVersionInfo;
-import com.idega.user.data.User;
+import com.idega.user.data.bean.User;
 import com.idega.util.ArrayUtil;
 import com.idega.util.CoreConstants;
 import com.idega.util.IOUtil;
@@ -360,7 +360,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 			throw new RepositoryException("User can not be identified!");
 		}
 
-		LoginTable loginTable = LoginDBHandler.getUserLogin(user);
+		LoginTable loginTable = LoginDBHandler.getUserLogin(user.getId());
 		Credentials credentials = getCredentials(Integer.valueOf(user.getId()), loginTable.getUserPasswordInClearText());
 
 		return repository.login(credentials);

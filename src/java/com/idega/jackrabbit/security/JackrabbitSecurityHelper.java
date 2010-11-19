@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.idega.core.accesscontrol.business.AccessController;
 import com.idega.idegaweb.IWMainApplication;
-import com.idega.user.data.User;
+import com.idega.user.data.bean.User;
 
 /**
  * Helper class for common methods related with security
@@ -34,7 +34,7 @@ public class JackrabbitSecurityHelper {
 	public String getSuperAdminId() throws RepositoryException {
 		if (superAdminId == null) {
 			User admin = getSuperAdmin();
-			superAdminId = admin == null ? null : admin.getId();
+			superAdminId = admin == null ? null : String.valueOf(admin.getId());
 		}
 		return superAdminId;
 	}
