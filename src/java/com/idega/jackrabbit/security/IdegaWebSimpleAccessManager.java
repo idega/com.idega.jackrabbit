@@ -60,6 +60,7 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         subject = context.getSubject();
         hierMgr = context.getHierarchyManager();
         Set<Principal> ps = subject.getPrincipals();
+        System.out.println(ps);
 
         /*
         Properties rolemaps = new Properties();
@@ -96,9 +97,6 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         initialized = true;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
 	public synchronized void close() throws Exception {
         if (!initialized) {
@@ -108,10 +106,8 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         initialized = false;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
+    @SuppressWarnings("deprecation")
+	@Override
 	public void checkPermission(ItemId id, int permissions)
             throws AccessDeniedException, ItemNotFoundException,
             RepositoryException {
@@ -134,10 +130,8 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
+    @SuppressWarnings("deprecation")
+	@Override
 	public boolean isGranted(ItemId id, int permissions)
             throws ItemNotFoundException, RepositoryException {
         if (!initialized) {

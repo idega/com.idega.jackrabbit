@@ -14,5 +14,8 @@ public class JackrabbitConstants {
 
 								REAL_USER_ID_USED = "repository.login.real.user.id",
 
-								PATH_USERS_HOME_FOLDERS = CoreConstants.PATH_FILES_ROOT + "/users";
+								PATH_USERS_HOME_FOLDERS = CoreConstants.PATH_FILES_ROOT + "/users",
+
+								IDEGA_NODE = "_idega_node",
+								IDEGA_NODE_TYPE = "iw:node";
 }

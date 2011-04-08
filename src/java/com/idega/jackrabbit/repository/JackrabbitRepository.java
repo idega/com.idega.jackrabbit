@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -45,10 +46,13 @@ import com.idega.core.business.DefaultSpringBean;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplicationShutdownEvent;
 import com.idega.jackrabbit.JackrabbitConstants;
+import com.idega.jackrabbit.bean.JackrabbitRepositoryItem;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.authentication.AuthenticationBusiness;
+import com.idega.repository.bean.RepositoryItem;
 import com.idega.repository.bean.RepositoryItemVersionInfo;
+import com.idega.repository.event.RepositoryEventListener;
 import com.idega.user.data.bean.User;
 import com.idega.util.ArrayUtil;
 import com.idega.util.CoreConstants;
@@ -314,7 +318,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 				node = getNode(parent, name, false, type, versionManager);
 				if (node == null) {
 					node = noType ? parent.addNode(name) : parent.addNode(name, type);
-					setDefaultProperties(node);
+					setDefaultProperties(node, type);
 				}
 
 				if (node == null) {
@@ -332,7 +336,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		return node;
 	}
 
-	private void setDefaultProperties(Node node) throws RepositoryException {
+	private void setDefaultProperties(Node node, String nodeType) throws RepositoryException {
 		List<String> defaultMixins = Arrays.asList(
 				JcrConstants.MIX_VERSIONABLE,
 				JcrConstants.MIX_REFERENCEABLE
@@ -341,6 +345,15 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 			node.addMixin(mixin);
 		}
 
+		String idegaNode = null;
+		if (JcrConstants.NT_FOLDER.equals(nodeType)) {
+			idegaNode = nodeType.concat(JackrabbitConstants.IDEGA_NODE);
+		} else if (JcrConstants.NT_FILE.equals(nodeType)) {
+			idegaNode = nodeType.concat(JackrabbitConstants.IDEGA_NODE);
+		}
+		if (idegaNode != null) {
+			node.setProperty(JackrabbitConstants.IDEGA_NODE_TYPE, idegaNode);
+		}
 	}
 
 	private Session getSessionAsRootUser() throws RepositoryException {
@@ -403,7 +416,8 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		}
 	}
 
-	private Binary getBinary(Node file) throws RepositoryException {
+	@Override
+	public Binary getBinary(Node file) throws RepositoryException {
 		if (file == null) {
 			return null;
 		}
@@ -438,7 +452,8 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	public boolean delete(String path) throws RepositoryException {
 		return delete(path, getUser());
 	}
-	private boolean delete(String path, User user) throws RepositoryException {
+	@Override
+	public boolean delete(String path, User user) throws RepositoryException {
 		if (StringUtil.isEmpty(path)) {
 			getLogger().warning("Resource is not defined!");
 			return false;
@@ -562,10 +577,6 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		return true;
 	}
 
-	private String getParentPath(String absolutePath) {
-		return isValidPath(absolutePath) ? absolutePath.substring(0, absolutePath.lastIndexOf(CoreConstants.SLASH)) : null;
-	}
-
 	private String getNodeName(String absolutePath) {
 		return isValidPath(absolutePath) ? absolutePath.substring(absolutePath.lastIndexOf(CoreConstants.SLASH)) : null;
 	}
@@ -581,9 +592,14 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 
 	@Override
 	public InputStream getFileContents(Node fileNode) throws IOException, RepositoryException {
+		return getFileContents(getUser(), fileNode);
+	}
+
+	@Override
+	public InputStream getFileContents(User user, Node fileNode) throws IOException, RepositoryException {
 		Session session = null;
 		try {
-			session = getSession(getUser());
+			session = getSession(user);
 			return getInputStream(getBinary(fileNode));
 		} finally {
 			logout(session);
@@ -641,7 +657,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	}
 
 	@Override
-	public String getWebdavServerURI() {
+	public String getWebdavServerURL() {
 		String appContext = getApplication().getApplicationContextURI();
 		if (appContext.endsWith(CoreConstants.SLASH)) {
 			appContext = appContext.substring(0, appContext.lastIndexOf(CoreConstants.SLASH));
@@ -795,5 +811,122 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		} finally {
 			logout(session);
 		}
+	}
+
+	@Override
+	public RepositoryItem getRepositoryItem(User user, String path) throws RepositoryException {
+		if (user == null) {
+			getLogger().warning("User is unknown!");
+			return null;
+		}
+
+		Session session = null;
+		try {
+			session = getSession(user);
+			Node node = getNode(path);
+			if (node == null) {
+				getLogger().warning("Repository item was not found: " + path);
+				return null;
+			}
+
+			return new JackrabbitRepositoryItem(path, user, node);
+		} finally {
+			logout(session);
+		}
+	}
+
+	@Override
+	public RepositoryItem getRepositoryItemAsRootUser(String path) throws RepositoryException {
+		return getRepositoryItem(securityHelper.getSuperAdmin(), path);
+	}
+
+	@Override
+	public Collection<Node> getChildNodes(User user, Node node) throws RepositoryException {
+		Collection<Node> nodes = new ArrayList<Node>();
+		if (user == null) {
+			getLogger().warning("User is unknown!");
+			return nodes;
+		}
+
+		for (NodeIterator iter = node.getNodes(); iter.hasNext();) {
+			Node childNode = iter.nextNode();
+			Property prop = null;
+			try {
+				prop = childNode.getProperty(JackrabbitConstants.IDEGA_NODE_TYPE);
+			} catch (PathNotFoundException e) {
+				getLogger().warning(e.getMessage());
+			}
+			if (prop == null) {
+				continue;
+			}
+
+			nodes.add(childNode);
+		}
+		return nodes;
+	}
+	@Override
+	public Collection<Node> getChildNodesAsRootUser(Node node) throws RepositoryException {
+		return getChildNodes(securityHelper.getSuperAdmin(), node);
+	}
+
+	@Override
+	public boolean isCollection(Node node) throws RepositoryException {
+		if (node == null) {
+			getLogger().warning("Node is unknown!");
+			return false;
+		}
+
+		Property prop = node.getProperty(JackrabbitConstants.IDEGA_NODE_TYPE);
+		return prop == null ? false : prop.getName().startsWith(JcrConstants.NT_FOLDER);
+	}
+
+	@Override
+	public void registerRepositoryEventListener(RepositoryEventListener listener) {
+		//	TODO: implement
+		getLogger().info("Register: " + listener);
+	}
+
+	@Override
+	public String getURI(String path) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean isFolder(String path) throws RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public int getChildCountExcludingFoldersAndHiddenFiles(String path)
+			throws RepositoryException {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public List<String> getChildPathsExcludingFoldersAndHiddenFiles(String path)
+			throws RepositoryException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<String> getChildFolderPaths(String path)
+			throws RepositoryException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getParentPath(String path) {
+		return isValidPath(path) ? path.substring(0, path.lastIndexOf(CoreConstants.SLASH)) : null;
+	}
+
+	@Override
+	public String createUniqueFileName(String scope) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
