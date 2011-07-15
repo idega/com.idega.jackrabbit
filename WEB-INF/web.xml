@@ -8,12 +8,12 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
     <!-- W E B D A V  S E R V L E T                                             -->
     <!-- ====================================================================== -->
     <servlet>
-        <servlet-name>repository</servlet-name>
+        <servlet-name>content</servlet-name>
         <servlet-class>com.idega.jackrabbit.webdav.IdegaWebdavServlet</servlet-class>
 
         <init-param>
             <param-name>resource-path-prefix</param-name>
-            <param-value>/repository</param-value>
+            <param-value>/content</param-value>
         </init-param>
         <!--
          <init-param>
@@ -63,16 +63,16 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
     <!-- S E R V L E T   M A P P I N G                                          -->
     <!-- ====================================================================== -->
     <servlet-mapping>
-        <servlet-name>repository</servlet-name>
-        <url-pattern>/repository</url-pattern>
+        <servlet-name>content</servlet-name>
+        <url-pattern>/content</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
-        <servlet-name>repository</servlet-name>
-        <url-pattern>/repository/</url-pattern>
+        <servlet-name>content</servlet-name>
+        <url-pattern>/content/</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
-        <servlet-name>repository</servlet-name>
-        <url-pattern>/repository/*</url-pattern>
+        <servlet-name>content</servlet-name>
+        <url-pattern>/content/*</url-pattern>
     </servlet-mapping>
 
 </web-app>

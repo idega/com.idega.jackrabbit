@@ -51,8 +51,7 @@ public class IWBundleStarter implements IWBundleStartable {
 			stream = getConfig(bundle);
 		}
 
-		//	TODO: use real folder ("store") after implementation is finished
-		getRepository().initializeRepository(stream, "jcr_store");
+		getRepository().initializeRepository(stream, "store");
 	}
 
 	private InputStream getConfig() {

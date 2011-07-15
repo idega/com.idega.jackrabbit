@@ -163,7 +163,6 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     	return false;
     }
 
-	@Override
 	public boolean canRead(Path arg0) throws RepositoryException {
 		// TODO Auto-generated method stub
 		return false;
@@ -193,5 +192,11 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
 			throws AccessDeniedException, RepositoryException {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public boolean canRead(Path arg0, ItemId arg1) throws RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

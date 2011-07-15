@@ -1,8 +1,15 @@
 package com.idega.jackrabbit.security;
 
+import java.security.Principal;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import javax.jcr.AccessDeniedException;
 import javax.jcr.ItemNotFoundException;
+import javax.jcr.PathNotFoundException;
 import javax.jcr.RepositoryException;
+import javax.jcr.security.Privilege;
 
 import org.apache.jackrabbit.core.id.ItemId;
 import org.apache.jackrabbit.core.security.AMContext;
@@ -10,7 +17,15 @@ import org.apache.jackrabbit.core.security.DefaultAccessManager;
 import org.apache.jackrabbit.core.security.authorization.AccessControlProvider;
 import org.apache.jackrabbit.core.security.authorization.WorkspaceAccessManager;
 
-public class RepositoryAccessManager extends DefaultAccessManager {
+import com.idega.core.accesscontrol.business.LoginBusinessBean;
+import com.idega.core.accesscontrol.business.LoginSession;
+import com.idega.core.accesscontrol.jaas.IWUserPrincipal;
+import com.idega.repository.access.RepositoryPrivilege;
+import com.idega.user.data.bean.User;
+import com.idega.util.ArrayUtil;
+import com.idega.util.StringUtil;
+
+public class RepositoryAccessManager extends DefaultAccessManager implements com.idega.repository.access.RepositoryAccessManager {
 
 //	private boolean system, anonymous;
 
@@ -40,4 +55,40 @@ public class RepositoryAccessManager extends DefaultAccessManager {
         //default to false
         return false;*/
     }
+
+	@Override
+	public boolean hasPermission(User user, String path, String privilegeName) {
+		return hasPermission(user, path, new RepositoryPrivilege(privilegeName));
+	}
+
+	@Override
+	public boolean hasPermission(User user, String path, Privilege privilege) {
+		if (user == null || StringUtil.isEmpty(path) || privilege == null)
+			return Boolean.FALSE;
+
+		try {
+			LoginSession loginSession = LoginBusinessBean.getLoginSessionBean();
+			if (loginSession.getUser().getId().intValue() != user.getId().intValue())
+				return Boolean.FALSE;
+
+			String loginName = LoginBusinessBean.getLoginSessionBean().getLoggedOnInfo().getLogin();
+			Set<Principal> principals = new HashSet<Principal>(Arrays.asList(new IWUserPrincipal(loginName)));
+			Privilege[] privileges = getPrivileges(path, principals);
+			if (ArrayUtil.isEmpty(privileges))
+				return Boolean.FALSE;
+
+			for (Privilege privilegeByPrincipal: privileges) {
+				if (privilegeByPrincipal.getName().equals(privilege.getName()))
+					return Boolean.TRUE;
+			}
+		} catch (PathNotFoundException e) {
+			e.printStackTrace();
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return Boolean.FALSE;
+	}
 }

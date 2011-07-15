@@ -1,13 +1,16 @@
 package com.idega.jackrabbit.repository;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.zip.ZipInputStream;
 
 import javax.jcr.Binary;
 import javax.jcr.Credentials;
@@ -21,6 +24,7 @@ import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
+import javax.jcr.UnsupportedRepositoryOperationException;
 import javax.jcr.Value;
 import javax.jcr.security.AccessControlPolicy;
 import javax.jcr.version.Version;
@@ -56,6 +60,7 @@ import com.idega.repository.event.RepositoryEventListener;
 import com.idega.user.data.bean.User;
 import com.idega.util.ArrayUtil;
 import com.idega.util.CoreConstants;
+import com.idega.util.FileUtil;
 import com.idega.util.IOUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
@@ -77,6 +82,8 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	private JackrabbitSecurityHelper securityHelper;
 	@Autowired
 	private AuthenticationBusiness authenticationBusiness;
+
+	private List<RepositoryEventListener> eventListeners = new ArrayList<RepositoryEventListener>();
 
 	@Override
 	public void initializeRepository(InputStream configStream, String repositoryName) throws Exception {
@@ -146,7 +153,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		throws RepositoryException {
 
 		try {
-			return uploadFile(parentPath, fileName, StringHandler.getStreamFromString(fileContentString), contentType, null) != null;
+			return uploadFile(parentPath, fileName, StringHandler.getStreamFromString(fileContentString), contentType, securityHelper.getSuperAdmin()) != null;
 		} catch (Exception e) {
 			getLogger().log(Level.WARNING, "Error uploading file: " + fileContentString + "\n to: " + parentPath + fileName, e);
 		}
@@ -158,7 +165,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	}
 	@Override
 	public boolean uploadFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, InputStream stream, String contentType) throws RepositoryException {
-		return uploadFile(parentPath, fileName, stream, contentType, null) != null;
+		return uploadFile(parentPath, fileName, stream, contentType, securityHelper.getSuperAdmin()) != null;
 	}
 	@Override
 	public boolean uploadFile(String uploadPath, String fileName, String contentType, InputStream fileInputStream) throws RepositoryException {
@@ -222,6 +229,16 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	}
 
 	@Override
+	public VersionManager getVersionManager() throws RepositoryException {
+		try {
+			return getSession(getUser()).getWorkspace().getVersionManager();
+		} catch (UnsupportedRepositoryOperationException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@Override
 	public List<RepositoryItemVersionInfo> getVersions(String parentPath, String fileName) throws RepositoryException {
 		List<RepositoryItemVersionInfo> itemsInfo = new ArrayList<RepositoryItemVersionInfo>();
 
@@ -242,6 +259,8 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 					Binary binary = getBinary(n);
 					if (binary != null) {
 						RepositoryItemVersionInfo info = new RepositoryItemVersionInfo();
+						info.setPath(version.getPath());
+						info.setName(version.getName());
 						info.setCreated(version.getCreated().getTime());
 						info.setId(version.getIdentifier());
 						info.setVersion(getVersion(version.toString()));
@@ -356,19 +375,19 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		}
 	}
 
-	private Session getSessionAsRootUser() throws RepositoryException {
-		return getSession(null);
-	}
-	private Session getSession(User user) throws RepositoryException {
-		if (user == null) {
-			try {
-				user = securityHelper.getSuperAdmin();
-			} catch (Exception e) {
-				getLogger().severe("Administrator user can not be resolved!");
-				throw new RepositoryException(e);
-			}
+	private Session getSessionBySuperAdmin() throws RepositoryException {
+		User admin = null;
+		try {
+			admin = securityHelper.getSuperAdmin();
+		} catch (Exception e) {
+			getLogger().severe("Administrator user can not be resolved!");
+			throw new RepositoryException(e);
 		}
+		return getSession(admin);
+	}
 
+	@Override
+	public Session getSession(User user) throws RepositoryException {
 		if (user == null) {
 			throw new RepositoryException("User can not be identified!");
 		}
@@ -391,7 +410,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	}
 	@Override
 	public InputStream getInputStreamAsRoot(String path) throws IOException, RepositoryException {
-		return getInputStream(path, null);
+		return getInputStream(path, securityHelper.getSuperAdmin());
 	}
 	private InputStream getInputStream(String path, User user) throws IOException, RepositoryException {
 		if (StringUtil.isEmpty(path)) {
@@ -446,7 +465,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 
 	@Override
 	public boolean deleteAsRootUser(String path) throws RepositoryException {
-		return delete(path, null);
+		return delete(path, securityHelper.getSuperAdmin());
 	}
 	@Override
 	public boolean delete(String path) throws RepositoryException {
@@ -484,7 +503,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	}
 	@Override
 	public boolean createFolderAsRoot(String path) throws RepositoryException {
-		return createFolder(path, null);
+		return createFolder(path, securityHelper.getSuperAdmin());
 	}
 	private boolean createFolder(String path, User user) throws RepositoryException {
 		if (StringUtil.isEmpty(path)) {
@@ -517,7 +536,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 
 		Session session = null;
 		try {
-			session = getSessionAsRootUser();
+			session = getSessionBySuperAdmin();
 
 			//	TODO: finish up!
 			/*AccessControlManager acm = session.getAccessControlManager();
@@ -610,14 +629,26 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	public Node getNode(String absolutePath) throws RepositoryException {
 		return getNode(absolutePath, false, true);
 	}
+
+	@Override
+	public Node getNodeAsRootUser(String absolutePath) throws RepositoryException {
+		return getNode(absolutePath, securityHelper.getSuperAdmin());
+	}
+
+	private Node getNode(String absolutePath, User user) throws RepositoryException {
+		return getNode(absolutePath, false, true, user);
+	}
 	private Node getNode(String absolutePath, boolean createIfNotFound, boolean useVersionManager) throws RepositoryException {
+		return getNode(absolutePath, createIfNotFound, useVersionManager, getUser());
+	}
+	private Node getNode(String absolutePath, boolean createIfNotFound, boolean useVersionManager, User user) throws RepositoryException {
 		if (!isValidPath(absolutePath)) {
 			return null;
 		}
 
 		Session session = null;
 		try {
-			session = getSession(getUser());
+			session = getSession(user);
 			Node root = session.getRootNode();
 			return getNode(root, absolutePath, createIfNotFound, null, useVersionManager ? session.getWorkspace().getVersionManager() : null);
 		} finally {
@@ -662,7 +693,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		if (appContext.endsWith(CoreConstants.SLASH)) {
 			appContext = appContext.substring(0, appContext.lastIndexOf(CoreConstants.SLASH));
 		}
-		return appContext.concat("/repository");//CoreConstants.WEBDAV_SERVLET_URI;	//	TODO use a constant
+		return appContext.concat(CoreConstants.WEBDAV_SERVLET_URI);
 	}
 
 	@Override
@@ -804,7 +835,7 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 
 		Session session = null;
 		try {
-			session = getSessionAsRootUser();
+			session = getSessionBySuperAdmin();
 			Node root = session.getRootNode();
 			Node node = getNode(root, absolutePath, false, null, null);
 			return node != null;
@@ -888,8 +919,11 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 
 	@Override
 	public String getURI(String path) {
-		// TODO Auto-generated method stub
-		return null;
+		String serverURL = getWebdavServerURL();
+		if (path.startsWith(serverURL))
+			return path;
+
+		return serverURL.concat(path);
 	}
 
 	@Override
@@ -928,5 +962,81 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	public String createUniqueFileName(String scope) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public boolean uploadZipFileContents(ZipInputStream zipStream,
+			String uploadPath) throws RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public <T extends RepositoryItem> T getRepositoryItem(String path) throws RepositoryException {
+		Node node = getNode(path);
+		if (node == null)
+		return null;
+
+		@SuppressWarnings("unchecked")
+		T item = (T) new JackrabbitRepositoryItem(path, getUser(), node);
+		return item;
+	}
+
+	@Override
+	public boolean isHiddenFile(String name) throws RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public String getUserHomeFolder(User user) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void removeProperty(String path, String name) throws RepositoryException {
+		Node node = getNode(path);
+		if (node == null)
+			return;
+
+		Session session = null;
+		try {
+			session = getSession(getUser());
+			Property property = node.getProperty(name);
+			if (property != null) {
+				property.remove();
+				session.save();
+			}
+		} finally {
+			logout(session);
+		}
+	}
+
+	@Override
+	public String getPath(String path) {
+		if (path == null)
+			return null;
+
+		String uriPrefix = getWebdavServerURL();
+		return path.startsWith(uriPrefix) ? path.substring(uriPrefix.length()) : path;
+	}
+
+	@Override
+	public void addRepositoryChangeListeners(RepositoryEventListener listener) {
+		if (listener == null || eventListeners.contains(listener))
+			return;
+		eventListeners.add(listener);
+	}
+
+	@Override
+	public OutputStream getOutputStream(String path) throws IOException, RepositoryException {
+		InputStream input = getInputStream(path);
+		if (input == null)
+			return null;
+
+		OutputStream output = new ByteArrayOutputStream();
+		FileUtil.streamToOutputStream(input, output);
+		return output;
 	}
 }

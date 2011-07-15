@@ -2,36 +2,51 @@ package com.idega.jackrabbit.bean;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 
+import javax.jcr.AccessDeniedException;
 import javax.jcr.Binary;
+import javax.jcr.InvalidItemStateException;
 import javax.jcr.Node;
+import javax.jcr.NodeIterator;
+import javax.jcr.PathNotFoundException;
+import javax.jcr.Property;
 import javax.jcr.RepositoryException;
+import javax.jcr.UnsupportedRepositoryOperationException;
+import javax.jcr.Value;
+import javax.jcr.lock.Lock;
+import javax.jcr.lock.LockException;
+import javax.jcr.version.Version;
+import javax.jcr.version.VersionManager;
 
+import org.apache.jackrabbit.JcrConstants;
+import org.apache.jackrabbit.value.StringValue;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.bean.RepositoryItem;
+import com.idega.repository.jcr.JCRItem;
 import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
 import com.idega.util.ListUtil;
+import com.idega.util.StringHandler;
 import com.idega.util.expression.ELUtil;
 
-public class JackrabbitRepositoryItem implements RepositoryItem {
+public class JackrabbitRepositoryItem extends JCRItem {
 
-	private String path,
-					mimeType;
+	private String path, mimeType;
 	private User user;
 	private Node node;
 
 	private Binary binary;
 	private Long size;
-	private Boolean collection,
-					exists;
+	private Boolean collection, exists;
 	private URL url;
 
 	@Autowired
@@ -177,6 +192,169 @@ public class JackrabbitRepositoryItem implements RepositoryItem {
 			}
 		}
 		return mimeType;
+	}
+
+	@Override
+	public long getCreationDate() {
+		try {
+			Property property = node.getProperty(JcrConstants.JCR_CREATED);
+			return property == null ? 0 : property.getDate().getTime().getTime();
+		} catch (PathNotFoundException e) {
+			e.printStackTrace();
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	@Override
+	public long getLastModified() {
+		try {
+			Property property = node.getProperty(JcrConstants.JCR_LASTMODIFIED);
+			return property == null ? getCreationDate() : property.getDate().getTime().getTime();
+		} catch (Exception e) {
+			return getCreationDate();
+		}
+	}
+
+	@Override
+	public String getParentPath() {
+		try {
+			Node parent = node.getParent();
+			return parent == null ? null : parent.getPath();
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@Override
+	public boolean isLocked() {
+		try {
+			return node.isLocked();
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public Lock lock(boolean isDeep, boolean isSessionScoped) {
+		try {
+			return node.lock(isDeep, isSessionScoped);
+		} catch (AccessDeniedException e) {
+			e.printStackTrace();
+		} catch (UnsupportedRepositoryOperationException e) {
+			e.printStackTrace();
+		} catch (LockException e) {
+			e.printStackTrace();
+		} catch (InvalidItemStateException e) {
+			e.printStackTrace();
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void unlock() {
+		try {
+			node.unlock();
+		} catch (AccessDeniedException e) {
+			e.printStackTrace();
+		} catch (UnsupportedRepositoryOperationException e) {
+			e.printStackTrace();
+		} catch (LockException e) {
+			e.printStackTrace();
+		} catch (InvalidItemStateException e) {
+			e.printStackTrace();
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void unCheckOut() {
+		try {
+			VersionManager vm = repository.getVersionManager();
+			Version version = vm.getBaseVersion(getPath());
+			vm.restore(version, true);
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public Property setProperty(String name, Serializable value) {
+		Value propValue = null;
+		if (value instanceof String)
+			propValue = new StringValue((String) value);
+
+		try {
+			if (propValue != null)
+				return node.setProperty(name, propValue);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+
+	@Override
+	public RepositoryItem getParenItem() {
+		if (node == null)
+			return null;
+
+		try {
+			Node parent = node.getParent();
+			return new JackrabbitRepositoryItem(parent.getPath(), user, parent);
+		} catch (RepositoryException e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+
+	@Override
+	public Collection<RepositoryItem> getSiblingResources() {
+		if (node == null)
+			return Collections.emptyList();
+
+		try {
+			Node parent = node.getParent();
+			if (parent == null)
+				return Collections.emptyList();
+
+			Collection<RepositoryItem> siblings = new ArrayList<RepositoryItem>();
+			for (NodeIterator nodeIterator = parent.getNodes(); nodeIterator.hasNext();) {
+				Node child = nodeIterator.nextNode();
+				if (child.equals(node))
+					continue;
+
+				if (node.hasProperty(JcrConstants.NT_FILE) || node.hasProperty(JcrConstants.NT_FOLDER))
+					siblings.add(new JackrabbitRepositoryItem(child.getPath(), user, child));
+			}
+			return siblings;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return Collections.emptyList();
+	}
+
+	@Override
+	public boolean createNewFile() throws IOException, RepositoryException {
+		if (!exists()) {
+			try {
+				return repository.uploadFile(getParentPath(), getName(), getMimeType(), StringHandler.getStreamFromString(CoreConstants.EMPTY));
+			} catch (Exception e) {
+				e.printStackTrace();
+				return false;
+			}
+		}
+		return true;
 	}
 
 }
