@@ -8,6 +8,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.logging.Level;
 
 import javax.jcr.AccessDeniedException;
 import javax.jcr.Binary;
@@ -36,9 +37,12 @@ import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
 import com.idega.util.ListUtil;
 import com.idega.util.StringHandler;
+import com.idega.util.StringUtil;
 import com.idega.util.expression.ELUtil;
 
 public class JackrabbitRepositoryItem extends JCRItem {
+
+	private static final long serialVersionUID = -5480971201437367638L;
 
 	private String path, mimeType;
 	private User user;
@@ -299,6 +303,21 @@ public class JackrabbitRepositoryItem extends JCRItem {
 			e.printStackTrace();
 		}
 
+		return null;
+	}
+
+	@Override
+	public Property getProperty(String property) {
+		if (StringUtil.isEmpty(property))
+			return null;
+
+		try {
+			return node.getProperty(property);
+		} catch (PathNotFoundException e) {
+			getLogger().warning("Property " + property + " does not exist for " + node);
+		} catch (RepositoryException e) {
+			getLogger().log(Level.WARNING, "Error getting property " + property + " for " + node, e);
+		}
 		return null;
 	}
 
