@@ -52,7 +52,7 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 
 	private void loadPermissions() {
 		List<ICPermission> permissions = getPermissionDAO().findPermissions(getPath());
-		this.permissions = permissions == null ? null : new ArrayList<ICPermission>(permissions);
+		this.permissions = permissions == null ? new ArrayList<ICPermission>(0) : new ArrayList<ICPermission>(permissions);
 	}
 
 	@Override
@@ -93,12 +93,6 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 		}
 
 		return ArrayUtil.convertListToArray(entries);
-	}
-
-	@Override
-	public boolean addAccessControlEntry(Principal principal, Privilege[] privileges) throws AccessControlException, RepositoryException {
-		// TODO Auto-generated method stub
-		return false;
 	}
 
 	@Override
@@ -161,6 +155,20 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 	public void add(com.idega.repository.access.AccessControlEntry ace) {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public void addPermission(ICPermission permission) {
+		if (permission == null)
+			return;
+
+		List<ICPermission> permissions = getPermissions();
+		permissions.add(permission);
+	}
+
+	@Override
+	public boolean addAccessControlEntry(Principal principal, Privilege[] privileges) throws AccessControlException, RepositoryException {
+		return false;
 	}
 
 }
