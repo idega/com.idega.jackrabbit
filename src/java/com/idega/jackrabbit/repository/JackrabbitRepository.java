@@ -51,8 +51,10 @@ import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplicationShutdownEvent;
 import com.idega.jackrabbit.JackrabbitConstants;
 import com.idega.jackrabbit.bean.JackrabbitRepositoryItem;
+import com.idega.jackrabbit.repository.access.JackrabbitAccessControlList;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.repository.RepositoryService;
+import com.idega.repository.access.AccessControlList;
 import com.idega.repository.authentication.AuthenticationBusiness;
 import com.idega.repository.bean.RepositoryItem;
 import com.idega.repository.bean.RepositoryItemVersionInfo;
@@ -1038,5 +1040,17 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 		OutputStream output = new ByteArrayOutputStream();
 		FileUtil.streamToOutputStream(input, output);
 		return output;
+	}
+
+	@Override
+	public AccessControlList getAccessControlList(String path) {
+		JackrabbitAccessControlList acl = new JackrabbitAccessControlList(path);
+		return acl;
+	}
+
+	@Override
+	public void storeAccessControlList(AccessControlList acl) {
+		// TODO Auto-generated method stub
+
 	}
 }

@@ -40,7 +40,7 @@ public class JackrabbitAccessControlEntry extends AccessControlEntryImpl impleme
 		this.principalType = principalType;
 	}
 
-	protected JackrabbitAccessControlEntry(Principal principal, Privilege[] privileges) throws AccessControlException, RepositoryException {
+	public JackrabbitAccessControlEntry(Principal principal, Privilege[] privileges) throws AccessControlException, RepositoryException {
 		super(principal, privileges);
 	}
 
