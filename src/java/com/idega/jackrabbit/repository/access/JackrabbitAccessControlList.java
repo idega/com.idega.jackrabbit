@@ -2,6 +2,7 @@ package com.idega.jackrabbit.repository.access;
 
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,10 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 	private PermissionDAO permissionDAO;
 
 	private String path;
+
 	private List<ICPermission> permissions;
+
+	private List<AccessControlEntry> aces;
 
 	public JackrabbitAccessControlList(String path) {
 		this.path = path;
@@ -64,7 +68,7 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 	public AccessControlEntry[] getAccessControlEntries() throws RepositoryException {
 		List<ICPermission> permissions = getPermissions();
 		if (ListUtil.isEmpty(permissions))
-			return null;
+			return aces == null ? null : ArrayUtil.convertListToArray(aces);
 
 		Map<String, List<Privilege>> privileges = new HashMap<String, List<Privilege>>();
 		for (ICPermission permission: permissions) {
@@ -92,13 +96,22 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 			entries.add(entry);
 		}
 
-		return ArrayUtil.convertListToArray(entries);
+		if (aces == null)
+			return ArrayUtil.convertListToArray(entries);
+
+		for (AccessControlEntry ace: entries) {
+			if (!aces.contains(ace))
+				aces.add(ace);
+		}
+		return ArrayUtil.convertListToArray(aces);
 	}
 
 	@Override
 	public void removeAccessControlEntry(AccessControlEntry ace) throws AccessControlException, RepositoryException {
-		// TODO Auto-generated method stub
+		if (aces == null || ace == null)
+			return;
 
+		aces.remove(ace);
 	}
 
 	@Override
@@ -147,14 +160,18 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 
 	@Override
 	public String getResourcePath() {
-		// TODO Auto-generated method stub
-		return null;
+		return path;
 	}
 
 	@Override
 	public void add(com.idega.repository.access.AccessControlEntry ace) {
-		// TODO Auto-generated method stub
+		if (ace == null)
+			return;
 
+		if (aces == null)
+			aces = new ArrayList<AccessControlEntry>();
+
+		aces.add(ace);
 	}
 
 	@Override
@@ -168,7 +185,24 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 
 	@Override
 	public boolean addAccessControlEntry(Principal principal, Privilege[] privileges) throws AccessControlException, RepositoryException {
-		return false;
+		if (principal == null || ArrayUtil.isEmpty(privileges))
+			return false;
+
+		if (aces == null)
+			aces = new ArrayList<AccessControlEntry>();
+
+		return aces.add(new JackrabbitAccessControlEntry(principal, privileges));
+	}
+
+	@Override
+	public void setAces(com.idega.repository.access.AccessControlEntry[] aces) {
+		if (ArrayUtil.isEmpty(aces))
+			return;
+
+		if (this.aces == null)
+			this.aces = new ArrayList<AccessControlEntry>();
+
+		this.aces.addAll(Arrays.asList(aces));
 	}
 
 }
