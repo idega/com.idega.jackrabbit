@@ -1,13 +1,16 @@
 package com.idega.jackrabbit.repository.access;
 
 import java.security.Principal;
+import java.util.Map;
 
 import javax.jcr.RepositoryException;
+import javax.jcr.Value;
 import javax.jcr.ValueFactory;
 import javax.jcr.security.AccessControlException;
 import javax.jcr.security.Privilege;
 
 import org.apache.jackrabbit.core.security.authorization.AccessControlEntryImpl;
+import org.apache.jackrabbit.core.security.authorization.PrivilegeManagerImpl;
 import org.apache.jackrabbit.spi.commons.conversion.NameResolver;
 
 import com.idega.repository.access.AccessControlEntry;
@@ -23,7 +26,8 @@ public class JackrabbitAccessControlEntry extends AccessControlEntryImpl impleme
 	private String inheritedFrom;
 
 	public JackrabbitAccessControlEntry(javax.jcr.security.AccessControlEntry ace) throws AccessControlException, RepositoryException {
-		this(ace.getPrincipal(), ace.getPrivileges());
+		//	TODO
+		this(ace.getPrincipal(), ace.getPrivileges(), true, null);
 
 		this.ace = ace;
 	}
@@ -31,7 +35,8 @@ public class JackrabbitAccessControlEntry extends AccessControlEntryImpl impleme
 	public JackrabbitAccessControlEntry(Principal principal, boolean negative, boolean protectedAce, boolean inherited, String inheritedFrom, int principalType)
 		throws AccessControlException, RepositoryException {
 
-		this(principal, null);
+		//	TODO
+		this(principal, null, true, null);
 
 		this.negative = negative;
 		this.protectedAce = protectedAce;
@@ -40,8 +45,8 @@ public class JackrabbitAccessControlEntry extends AccessControlEntryImpl impleme
 		this.principalType = principalType;
 	}
 
-	public JackrabbitAccessControlEntry(Principal principal, Privilege[] privileges) throws AccessControlException, RepositoryException {
-		super(principal, privileges);
+	public JackrabbitAccessControlEntry(Principal principal, Privilege[] privileges, boolean isAllow, Map<String, Value> restrictions) throws AccessControlException, RepositoryException {
+		super(principal, privileges, isAllow, restrictions);
 	}
 
 	@Override
@@ -96,6 +101,12 @@ public class JackrabbitAccessControlEntry extends AccessControlEntryImpl impleme
 	public void clearPrivileges() {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	protected PrivilegeManagerImpl getPrivilegeManager() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

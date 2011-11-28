@@ -5,16 +5,11 @@ import java.util.logging.Level;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Service;
-
 import com.idega.core.business.DefaultSpringBean;
 import com.idega.repository.RepositorySession;
 import com.idega.repository.access.AccessControlList;
 import com.idega.user.data.bean.User;
 
-@Service
-@Scope("session")
 public class JackrabbitRepositorySession extends DefaultSpringBean implements RepositorySession {
 
 	private Session getRepositorySession() {

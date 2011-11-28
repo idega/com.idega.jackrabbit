@@ -87,12 +87,13 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 		List<AccessControlEntry> entries = new ArrayList<AccessControlEntry>();
 		for (String principal: privileges.keySet()) {
 			final String principalName = principal;
+			//	TODO
 			AccessControlEntry entry = new JackrabbitAccessControlEntry(new Principal() {
 				@Override
 				public String getName() {
 					return principalName;
 				}
-			}, ArrayUtil.convertListToArray(privileges.get(principal)));
+			}, ArrayUtil.convertListToArray(privileges.get(principal)), true, null);
 			entries.add(entry);
 		}
 
@@ -191,7 +192,8 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 		if (aces == null)
 			aces = new ArrayList<AccessControlEntry>();
 
-		return aces.add(new JackrabbitAccessControlEntry(principal, privileges));
+		//	TODO
+		return aces.add(new JackrabbitAccessControlEntry(principal, privileges, true, null));
 	}
 
 	@Override

@@ -10,6 +10,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipInputStream;
 
 import javax.jcr.Binary;
@@ -37,22 +38,20 @@ import org.apache.jackrabbit.core.RepositoryImpl;
 import org.apache.jackrabbit.core.config.RepositoryConfig;
 import org.apache.jackrabbit.value.ValueFactoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.ApplicationEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Service;
 
 import com.idega.builder.bean.AdvancedProperty;
 import com.idega.core.accesscontrol.business.LoginDBHandler;
+import com.idega.core.accesscontrol.business.LoginSession;
 import com.idega.core.accesscontrol.data.LoginTable;
-import com.idega.core.business.DefaultSpringBean;
 import com.idega.core.file.util.MimeTypeUtil;
+import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWMainApplicationShutdownEvent;
 import com.idega.jackrabbit.JackrabbitConstants;
 import com.idega.jackrabbit.bean.JackrabbitRepositoryItem;
 import com.idega.jackrabbit.repository.access.JackrabbitAccessControlList;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
+import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.access.AccessControlList;
 import com.idega.repository.authentication.AuthenticationBusiness;
@@ -62,10 +61,12 @@ import com.idega.repository.event.RepositoryEventListener;
 import com.idega.user.data.bean.User;
 import com.idega.util.ArrayUtil;
 import com.idega.util.CoreConstants;
+import com.idega.util.CoreUtil;
 import com.idega.util.FileUtil;
 import com.idega.util.IOUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
+import com.idega.util.expression.ELUtil;
 
 /**
  * Implementation of {@link RepositoryService}
@@ -73,10 +74,9 @@ import com.idega.util.StringUtil;
  * @author valdas
  *
  */
+public class JackrabbitRepository implements org.apache.jackrabbit.api.JackrabbitRepository, RepositoryService {
 
-@Service
-@Scope(BeanDefinition.SCOPE_SINGLETON)
-public class JackrabbitRepository extends DefaultSpringBean implements RepositoryService, org.apache.jackrabbit.api.JackrabbitRepository, ApplicationListener {
+	private static final Logger LOGGER = Logger.getLogger(JackrabbitRepository.class.getName());
 
 	private Repository repository;
 
@@ -86,6 +86,31 @@ public class JackrabbitRepository extends DefaultSpringBean implements Repositor
 	private AuthenticationBusiness authenticationBusiness;
 
 	private List<RepositoryEventListener> eventListeners = new ArrayList<RepositoryEventListener>();
+
+	private Logger getLogger() {
+		return LOGGER;
+	}
+
+	private IWMainApplication getApplication() {
+		IWContext iwc = CoreUtil.getIWContext();
+		return iwc == null ? IWMainApplication.getDefaultIWMainApplication() : iwc.getIWMainApplication();
+	}
+
+	private User getCurrentUser() {
+		IWContext iwc = CoreUtil.getIWContext();
+		if (iwc != null && iwc.isLoggedOn())
+			return iwc.getLoggedInUser();
+
+		try {
+			LoginSession loginSession = ELUtil.getInstance().getBean(LoginSession.class.getName());
+			if (loginSession != null)
+				return loginSession.getUser();
+		} catch (Exception e) {
+			LOGGER.log(Level.WARNING, "Error getting current user", e);
+		}
+
+		return null;
+	}
 
 	@Override
 	public void initializeRepository(InputStream configStream, String repositoryName) throws Exception {

@@ -195,8 +195,15 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
 	}
 
 	@Override
-	public boolean canRead(Path arg0, ItemId arg1) throws RepositoryException {
+	public boolean canRead(Path path, ItemId itemId) throws RepositoryException {
 		// TODO Auto-generated method stub
 		return false;
+	}
+
+	@Override
+	public void checkRepositoryPermission(int permission)
+			throws AccessDeniedException, RepositoryException {
+		// TODO Auto-generated method stub
+		System.out.println("Permission: " + permission);
 	}
 }
