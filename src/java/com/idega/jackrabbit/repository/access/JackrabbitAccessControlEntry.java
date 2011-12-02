@@ -10,7 +10,7 @@ import javax.jcr.security.AccessControlException;
 import javax.jcr.security.Privilege;
 
 import org.apache.jackrabbit.core.security.authorization.AccessControlEntryImpl;
-import org.apache.jackrabbit.core.security.authorization.PrivilegeManagerImpl;
+//import org.apache.jackrabbit.core.security.authorization.PrivilegeManagerImpl;
 import org.apache.jackrabbit.spi.commons.conversion.NameResolver;
 
 import com.idega.repository.access.AccessControlEntry;
@@ -103,10 +103,10 @@ public class JackrabbitAccessControlEntry extends AccessControlEntryImpl impleme
 
 	}
 
-	@Override
-	protected PrivilegeManagerImpl getPrivilegeManager() {
+	//@Override
+	/*protected PrivilegeManagerImpl getPrivilegeManager() {
 		// TODO Auto-generated method stub
 		return null;
-	}
+	}*/
 
 }
