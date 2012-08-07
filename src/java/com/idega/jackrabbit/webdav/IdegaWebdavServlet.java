@@ -1,27 +1,27 @@
 package com.idega.jackrabbit.webdav;
 
 import java.io.IOException;
-import java.io.Writer;
+import java.io.OutputStream;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.jcr.ItemNotFoundException;
-import javax.jcr.Repository;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.jackrabbit.webdav.DavException;
+import org.apache.jackrabbit.webdav.DavLocatorFactory;
 import org.apache.jackrabbit.webdav.DavResource;
-import org.apache.jackrabbit.webdav.DavResourceIterator;
 import org.apache.jackrabbit.webdav.DavServletResponse;
 import org.apache.jackrabbit.webdav.WebdavRequest;
 import org.apache.jackrabbit.webdav.WebdavResponse;
 import org.apache.jackrabbit.webdav.jcr.JCRWebdavServerServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.repository.RepositoryService;
 import com.idega.util.CoreConstants;
+import com.idega.util.FileUtil;
 import com.idega.util.expression.ELUtil;
 
 /**
@@ -38,10 +38,9 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	private RepositoryService repository;
 
 	@Override
-	public Repository getRepository() {
-		if (repository == null) {
+	public RepositoryService getRepository() {
+		if (repository == null)
 			ELUtil.getInstance().autowire(this);
-		}
 		return repository;
 	}
 
@@ -49,43 +48,37 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	protected void doGet(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
 		try {
 			if (davResource.exists()) {
-				webdavResponse.setContentType(MimeTypeUtil.MIME_TYPE_HTML.concat(";charset=".concat(CoreConstants.ENCODING_UTF8.toLowerCase())));
+//				if (davResource.isCollection())
+//					webdavResponse.setContentType(MimeTypeUtil.MIME_TYPE_HTML.concat(";charset=".concat(CoreConstants.ENCODING_UTF8.toLowerCase())));
 
 				writeResponse(webdavResponse, davResource, 0);
-
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
 			} else {
 				throw new DavException(DavServletResponse.SC_NOT_FOUND, new ItemNotFoundException("No node at " + davResource.getResourcePath()));
 			}
 		} catch (Exception e) {
-			LOGGER.warning(e.getMessage());
+			LOGGER.log(Level.WARNING, "Error getting " + davResource.getHref(), e);
 			throw new DavException(DavServletResponse.SC_INTERNAL_SERVER_ERROR, e);
 		}
 	}
 
 	private void writeResponse(WebdavResponse webdavResponse, DavResource davResource, int level) throws IOException {
 		String name = davResource.getDisplayName();
-		Writer writer = webdavResponse.getWriter();
+		String path = davResource.getResourcePath();
+		String prefix = "/default/jcr:root";
+		if (path.startsWith(prefix))
+			path = path.replaceFirst(prefix, CoreConstants.EMPTY);
 
-		if (canDisplay(name)) {
-			writer.write("<a href=\"".concat(davResource.getHref()).concat("\">").concat(name).concat("</a>\n"));
-		}
-
-		if (level > 0) {
-			return;
-		}
-
-		if (isCollection(davResource, name)) {
-			for (DavResourceIterator davResIter = davResource.getMembers(); davResIter.hasNext();) {
-				DavResource resource = davResIter.nextResource();
-				writeResponse(webdavResponse, resource, 1);
-			}
+		if (isCollection(davResource, name) && canDisplay(name)) {
+			//	TODO: implement
+//			writer.write("<a href=\"".concat(davResource.getHref()).concat("\">").concat(name).concat("</a>\n"));
 		} else {
-			String fileType = MimeTypeUtil.resolveMimeTypeFromFileName(name);
-
-			webdavResponse.setContentType(fileType.concat("charset=".concat(CoreConstants.ENCODING_UTF8.toLowerCase())));
-
-			writer.write(name);
+			try {
+				OutputStream output = webdavResponse.getOutputStream();
+				FileUtil.streamToOutputStream(getRepository().getInputStreamAsRoot(path), output);
+			} catch (Exception e) {
+				LOGGER.log(Level.WARNING, "Error getting content of " + path, e);
+			}
 		}
 	}
 
@@ -100,6 +93,15 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	@Override
 	protected void doPost(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
 		super.doPost(webdavRequest, webdavResponse, davResource);
+	}
+
+	private DavLocatorFactory locatorFactory;
+
+	@Override
+	public DavLocatorFactory getLocatorFactory() {
+		if (locatorFactory == null)
+			locatorFactory = new IdegaDAVLocatorFactory(CoreConstants.WEBDAV_SERVLET_URI);
+		return locatorFactory;
 	}
 
 	@Override

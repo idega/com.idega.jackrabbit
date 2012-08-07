@@ -24,6 +24,10 @@ public class RepositorySecurityManager extends DefaultSecurityManager {
 
 	private UserManager userManager;
 
+	public RepositorySecurityManager() {
+		super();
+	}
+
 	JackrabbitSecurityHelper getSecurityHelper() {
 		if (securityHelper == null) {
 			ELUtil.getInstance().autowire(this);

@@ -4,11 +4,13 @@ import java.util.logging.Level;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.jcr.security.Privilege;
 
 import com.idega.core.business.DefaultSpringBean;
 import com.idega.repository.RepositorySession;
 import com.idega.repository.access.AccessControlList;
 import com.idega.user.data.bean.User;
+import com.idega.util.StringUtil;
 
 public class JackrabbitRepositorySession extends DefaultSpringBean implements RepositorySession {
 
@@ -63,6 +65,22 @@ public class JackrabbitRepositorySession extends DefaultSpringBean implements Re
 		try {
 			//	TODO: implement
 			return false;
+		} finally {
+			session.logout();
+		}
+	}
+
+	@Override
+	public boolean hasPermission(String path, Privilege privilege) throws RepositoryException {
+		if (StringUtil.isEmpty(path) || privilege == null)
+			return false;
+
+		Session session = getRepositorySession();
+		if (session == null)
+			return false;
+
+		try {
+			return true;//	TODO: implement
 		} finally {
 			session.logout();
 		}

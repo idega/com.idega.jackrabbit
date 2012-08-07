@@ -18,6 +18,7 @@
 		</FileSystem>
 		<PersistenceManager class="org.apache.jackrabbit.core.persistence.obj.ObjectPersistenceManager" />
 		<SearchIndex class="org.apache.jackrabbit.core.query.lucene.SearchIndex">
+			<param name="queryClass" value="com.idega.jackrabbit.search.IdegaQuery" />
 			<param name="path" value="${wsp.home}/index" />
 		</SearchIndex>
 		<WorkspaceSecurity>

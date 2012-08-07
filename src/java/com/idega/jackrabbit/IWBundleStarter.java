@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.idega.idegaweb.IWBundle;
 import com.idega.idegaweb.IWBundleStartable;
+import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.repository.RepositoryService;
 import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
@@ -32,12 +33,16 @@ public class IWBundleStarter implements IWBundleStartable {
 	@Autowired
 	private RepositoryService repository;
 
+	@Autowired
+	private JackrabbitSecurityHelper securityHelper;
+
 	@Override
 	public void start(IWBundle starterBundle) {
 		try {
 			initializeRepository(starterBundle);
+//			initializeCustomNamespaces();
 		} catch (Exception e) {
-			String message = "Error loading configuration file: " + CONFIG_FILE;
+			String message = "Error initializing repository. Used configuration file: " + CONFIG_FILE;
 			LOGGER.log(Level.SEVERE, message, e);
 			CoreUtil.sendExceptionNotification(message, e);
 
@@ -53,6 +58,38 @@ public class IWBundleStarter implements IWBundleStartable {
 
 		getRepository().initializeRepository(stream, "store");
 	}
+
+//	private void initializeCustomNamespaces() throws Exception {
+//		Session session = null;
+//		try {
+//			session = getRepository().getSession(getSecurityHelper().getSuperAdmin());
+//
+//			/* Retrieve node type manager from the session */
+//			NodeTypeManager nodeTypeManager = session.getWorkspace().getNodeTypeManager();
+//
+//			/* Create node type */
+//			NodeType nodeType = nodeTypeManager.getNodeTyp)
+//			nodeType.
+//			/* Create a new property */
+//			PropertyDefinitionTemplate customProperty = nodeTypeManager.createPropertyDefinitionTemplate();
+//			customProperty.setName(JackrabbitConstants.IDEGA_CUSTOM_PROPERTY);
+//			customProperty.setRequiredType(PropertyType.STRING);
+//			/* Add property to node type */
+//			nodeType.getPropertyDefinitionTemplates().add(customProperty);
+//
+//			/* Register node type */
+//			nodeTypeManager.registerNodeType(nodeType, false);
+//
+//			NamespaceRegistry namespaceRegistry = session.getWorkspace().getNamespaceRegistry();
+//			if (Arrays.asList(namespaceRegistry.getPrefixes()).contains(JackrabbitConstants.IDEGA_PREFIX))
+//				return;
+//
+//			namespaceRegistry.registerNamespace(JackrabbitConstants.IDEGA_PREFIX, "http://www.idega.is/content/files/public/jcr/jcr_nodes.xml");
+//		} finally {
+//			if (session != null)
+//				session.logout();
+//		}
+//	}
 
 	private InputStream getConfig() {
 		return IOUtil.getStreamFromJar(JackrabbitConstants.IW_BUNDLE_IDENTIFIER, CONFIG_FILE);
@@ -83,6 +120,12 @@ public class IWBundleStarter implements IWBundleStartable {
 			ELUtil.getInstance().autowire(this);
 		}
 		return repository;
+	}
+
+	private JackrabbitSecurityHelper getSecurityHelper() {
+		if (securityHelper == null)
+			ELUtil.getInstance().autowire(this);
+		return securityHelper;
 	}
 
 	@Override

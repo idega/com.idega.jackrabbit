@@ -200,10 +200,9 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
 		return false;
 	}
 
-	/*@Override
-	public void checkRepositoryPermission(int permission)
-			throws AccessDeniedException, RepositoryException {
+	@Override
+	public void checkRepositoryPermission(int permission) throws AccessDeniedException, RepositoryException {
 		// TODO Auto-generated method stub
-		System.out.println("Permission: " + permission);
-	}*/
+		System.out.println(getClass().getName() + ": permission: " + permission);
+	}
 }
