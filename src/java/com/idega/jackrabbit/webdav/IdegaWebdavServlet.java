@@ -19,6 +19,7 @@ import org.apache.jackrabbit.webdav.WebdavResponse;
 import org.apache.jackrabbit.webdav.jcr.JCRWebdavServerServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
 import com.idega.util.CoreConstants;
 import com.idega.util.FileUtil;
@@ -65,7 +66,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	private void writeResponse(WebdavResponse webdavResponse, DavResource davResource, int level) throws IOException {
 		String name = davResource.getDisplayName();
 		String path = davResource.getResourcePath();
-		String prefix = "/default/jcr:root";
+		String prefix = RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT;
 		if (path.startsWith(prefix))
 			path = path.replaceFirst(prefix, CoreConstants.EMPTY);
 

@@ -38,6 +38,6 @@ public static final String DAV_NAME_SPACE = "DAV:";
 
 								REPOSITORY = "repository",
 
-								DEFAULT_WORKSPACE_ROOT_CONTENT = CoreConstants.REPOSITORY_DEFAULT_WORKSPACE +
+								DEFAULT_WORKSPACE_ROOT_CONTENT = CoreConstants.SLASH + CoreConstants.REPOSITORY_DEFAULT_WORKSPACE +
 									JcrRemotingConstants.ROOT_ITEM_RESOURCEPATH;
 }
