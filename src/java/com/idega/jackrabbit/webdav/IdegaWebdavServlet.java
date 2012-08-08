@@ -10,6 +10,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.jackrabbit.server.SessionProvider;
 import org.apache.jackrabbit.webdav.DavException;
 import org.apache.jackrabbit.webdav.DavLocatorFactory;
 import org.apache.jackrabbit.webdav.DavResource;
@@ -19,6 +20,7 @@ import org.apache.jackrabbit.webdav.WebdavResponse;
 import org.apache.jackrabbit.webdav.jcr.JCRWebdavServerServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.idega.jackrabbit.repository.IdegaSessionProvider;
 import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
 import com.idega.util.CoreConstants;
@@ -107,6 +109,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 
 	@Override
 	protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		request.setAttribute(SessionProvider.class.getName(), new IdegaSessionProvider());
 		super.service(request, response);
 	}
 

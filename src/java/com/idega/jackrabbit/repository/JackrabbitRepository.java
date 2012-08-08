@@ -59,6 +59,7 @@ import com.idega.jackrabbit.JackrabbitConstants;
 import com.idega.jackrabbit.bean.JackrabbitRepositoryItem;
 import com.idega.jackrabbit.repository.access.JackrabbitAccessControlList;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
+import com.idega.jackrabbit.stream.RepositoryStream;
 import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.access.AccessControlList;
@@ -222,6 +223,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			getLogger().warning("Input stream is invalid!");
 			return null;
 		}
+		if (parentPath.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
+			parentPath = parentPath.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
 		if (!parentPath.endsWith(CoreConstants.SLASH))
 			parentPath = parentPath.concat(CoreConstants.SLASH);
 
@@ -239,6 +242,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			if (resource == null) {
 				resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
 			} else {
+				//	There are previous version(s) of this file
 				if (!versionManager.isCheckedOut(file.getPath()))
 					versionManager.checkout(file.getPath());
 			}
@@ -260,9 +264,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 			return null;
 		} finally {
-			if (binary != null) {
+			if (binary != null)
 				binary.dispose();
-			}
 			IOUtil.close(content);
 
 			logout(session);
@@ -307,6 +310,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 						info.setId(version.getIdentifier());
 						info.setVersion(getVersion(version.toString()));
 						itemsInfo.add(info);
+
+						binary.dispose();
 					}
 				}
 			}
@@ -486,8 +491,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 				return null;
 			}
 
-			Binary data = getBinary(file.getPath(), session, user, false);
-			return getInputStream(data);
+			String pathToStream = file.getPath();
+			Binary data = getBinary(pathToStream, session, user, false);
+			return getInputStream(data, pathToStream);
 		} finally {
 			logout(session);
 		}
@@ -525,13 +531,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		}
 	}
 
-	private InputStream getInputStream(Binary data) throws IOException, RepositoryException {
+	private InputStream getInputStream(Binary data, String path) throws IOException, RepositoryException {
 		if (data == null) {
 			getLogger().warning("Value is not set for resource!");
 			return null;
 		}
 
-		return data.getStream();
+		return StringUtil.isEmpty(path) ? data.getStream() : new RepositoryStream(path, data.getStream());
 	}
 
 	private User getUser() throws RepositoryException {
@@ -1336,13 +1342,16 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		if (StringUtil.isEmpty(path))
 			return -1;
 
+		Binary data = null;
 		Session session = null;
 		try {
 			User user = getUser();
 			session = getSession(user);
-			Binary binary = getBinary(path, session, user, false);
-			return binary == null ? -1 : binary.getSize();
+			data = getBinary(path, session, user, false);
+			return data == null ? -1 : data.getSize();
 		} finally {
+			if (data != null)
+				data.dispose();
 			logout(session);
 		}
 	}
