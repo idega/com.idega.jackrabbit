@@ -104,7 +104,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 				e.printStackTrace();
 			}
 		}
-		return collection;
+		return collection == null ? false : collection;
 	}
 
 	@Override
