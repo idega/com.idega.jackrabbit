@@ -20,10 +20,9 @@ public class RepositoryStream extends AutoCloseInputStream {
 	private String path;
 
 	public RepositoryStream(String path, InputStream stream) throws FileNotFoundException {
-		super(null);
+		super(stream);
 
 		this.path = path;
-		this.in = stream;
 	}
 
 	@Override
