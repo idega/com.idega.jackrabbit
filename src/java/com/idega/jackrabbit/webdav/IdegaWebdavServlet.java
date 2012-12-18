@@ -5,7 +5,6 @@ import java.io.OutputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.jcr.ItemNotFoundException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -57,7 +56,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 				writeResponse(webdavResponse, davResource, 0);
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
 			} else {
-				throw new DavException(DavServletResponse.SC_NOT_FOUND, new ItemNotFoundException("No node at " + davResource.getResourcePath()));
+				LOGGER.warning("Node '" + davResource.getResourcePath() + "' does not exist");
 			}
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error getting " + davResource.getHref(), e);

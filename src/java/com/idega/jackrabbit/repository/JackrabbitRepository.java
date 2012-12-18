@@ -357,6 +357,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return getNode(parent, nodeName, true, type);
 	}
 	private Node getNode(Node parent, String nodeName, boolean createIfNotFound, String type) throws RepositoryException {
+		if (nodeName.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
+			nodeName = nodeName.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
 		if (nodeName.startsWith(CoreConstants.SLASH))
 			nodeName = nodeName.substring(1);
 		if (nodeName.endsWith(CoreConstants.SLASH))
@@ -459,7 +461,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return repository.login(credentials);
 	}
 
-	private void logout(Session session) {
+	public void logout(Session session) {
 		if (session != null && session.isLive())
 			session.logout();
 	}
@@ -717,6 +719,10 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	public Node getNodeAsRootUser(String absolutePath) throws RepositoryException {
 		return getNode(absolutePath, securityHelper.getSuperAdmin());
 	}
+	@Override
+	public Node getNodeAsRootUser(String absolutePath, boolean closeSession) throws RepositoryException {
+		return getNode(absolutePath, false, securityHelper.getSuperAdmin(), closeSession);
+	}
 
 	private Node getNode(String absolutePath, User user) throws RepositoryException {
 		return getNode(absolutePath, false, user, true);
@@ -727,11 +733,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	private Node getNode(String absolutePath, boolean createIfNotFound, User user, boolean closeSession)
 			throws RepositoryException {
 		Session session = null;
+		Node node = null;
 		try {
 			session = getSession(user);
-			return getNode(absolutePath, createIfNotFound, user, session, closeSession);
+			node = getNode(absolutePath, createIfNotFound, user, session, closeSession);
+			return node;
 		} finally {
-			if (closeSession)
+			if (node == null || closeSession)
 				logout(session);
 		}
 	}
@@ -752,6 +760,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	public boolean setProperties(String path, com.idega.repository.bean.Property... properties)	throws RepositoryException {
 		if (StringUtil.isEmpty(path) || ArrayUtil.isEmpty(properties))
 			return false;
+
+		if (path.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
+			path = path.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
 
 		Session session = null;
 		try {
@@ -950,7 +961,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public RepositoryItem getRepositoryItem(User user, String path) throws RepositoryException {
+	public JackrabbitRepositoryItem getRepositoryItem(User user, String path) throws RepositoryException {
 		if (user == null) {
 			getLogger().warning("User is unknown!");
 			return null;
@@ -973,8 +984,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public RepositoryItem getRepositoryItemAsRootUser(String path) throws RepositoryException {
+	public JackrabbitRepositoryItem getRepositoryItemAsRootUser(String path) throws RepositoryException {
 		return getRepositoryItem(securityHelper.getSuperAdmin(), path);
 	}
 
@@ -994,7 +1006,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		try {
 			Collection<RepositoryItem> items = new ArrayList<RepositoryItem>();
 
-			Node node = getNode(path, false);
+			Node node = getNode(path, false, user, false);
 			if (node == null)
 				return items;
 
@@ -1048,7 +1060,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 		Session session = null;
 		try {
-			Node node = getNode(path, false);
+			Node node = getNodeAsRootUser(path, false);
 			if (node == null)
 				return false;
 
@@ -1288,7 +1300,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 		Session session = null;
 		try {
-			Node node = getNode(path, false);
+			Node node = getNodeAsRootUser(path, false);
 			if (node == null)
 				return null;
 
@@ -1306,7 +1318,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 		Session session = null;
 		try {
-			Node node = getNode(path, false);
+			Node node = getNodeAsRootUser(path, false);
 			if (node == null)
 				return -1;
 

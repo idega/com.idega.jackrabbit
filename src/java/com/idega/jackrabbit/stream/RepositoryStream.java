@@ -11,6 +11,8 @@ import javax.jcr.RepositoryException;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
 
+import com.idega.builder.business.BuilderLogicWrapper;
+import com.idega.idegaweb.IWMainApplication;
 import com.idega.repository.RepositoryService;
 import com.idega.util.IOUtil;
 import com.idega.util.expression.ELUtil;
@@ -27,12 +29,22 @@ public class RepositoryStream extends AutoCloseInputStream {
 
 	@Override
 	public int read() throws IOException {
+		return read(true);
+	}
+
+	private int read(boolean reTry) throws IOException {
 		try {
 			return in.read();
 		} catch (Exception e) {
 			Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error reading from " + path, e);
 			IOUtil.close(in);
 			in = null;
+		}
+
+		if (reTry) {
+			BuilderLogicWrapper builderLogic = ELUtil.getInstance().getBean(BuilderLogicWrapper.SPRING_BEAN_NAME_BUILDER_LOGIC_WRAPPER);
+			builderLogic.getBuilderService(IWMainApplication.getDefaultIWApplicationContext()).clearAllCaches();
+			return read(false);
 		}
 
 		RepositoryService repository = ELUtil.getInstance().getBean(RepositoryService.class);
