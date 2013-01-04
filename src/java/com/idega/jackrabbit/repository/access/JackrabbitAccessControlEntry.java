@@ -25,6 +25,16 @@ public class JackrabbitAccessControlEntry extends AccessControlEntryImpl impleme
 
 	private String inheritedFrom;
 
+	public JackrabbitAccessControlEntry(final String principal) throws AccessControlException, RepositoryException {
+		this(new Principal() {
+
+			@Override
+			public String getName() {
+				return principal;
+			}
+		}, false, false, true, principal, AccessControlEntry.PRINCIPAL_TYPE_STANDARD);
+	}
+
 	public JackrabbitAccessControlEntry(javax.jcr.security.AccessControlEntry ace) throws AccessControlException, RepositoryException {
 		//	TODO
 		this(ace.getPrincipal(), ace.getPrivileges(), true, null);

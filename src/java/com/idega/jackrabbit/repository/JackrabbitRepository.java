@@ -461,6 +461,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return repository.login(credentials);
 	}
 
+	@Override
 	public void logout(Session session) {
 		if (session != null && session.isLive())
 			session.logout();
@@ -1464,5 +1465,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		} finally {
 			logout(session);
 		}
+	}
+
+	@Override
+	public AuthenticationBusiness getAuthenticationBusiness() {
+		if (authenticationBusiness == null)
+			ELUtil.getInstance().autowire(this);
+		return authenticationBusiness;
 	}
 }
