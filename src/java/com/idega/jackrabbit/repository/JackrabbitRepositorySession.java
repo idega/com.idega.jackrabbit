@@ -36,8 +36,7 @@ public class JackrabbitRepositorySession extends DefaultSpringBean implements Re
 			return null;
 
 		try {
-			//	FIXME: implement
-			return null;
+			return getRepositoryService().getAccessControlList(path);
 		} finally {
 			session.logout();
 		}
@@ -63,8 +62,8 @@ public class JackrabbitRepositorySession extends DefaultSpringBean implements Re
 			return false;
 
 		try {
-			//	TODO: implement
-			return false;
+			getRepositoryService().storeAccessControlList(acl);
+			return true;
 		} finally {
 			session.logout();
 		}

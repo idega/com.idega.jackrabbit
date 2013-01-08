@@ -2,6 +2,9 @@ package com.idega.jackrabbit.webdav;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,11 +22,18 @@ import org.apache.jackrabbit.webdav.WebdavResponse;
 import org.apache.jackrabbit.webdav.jcr.JCRWebdavServerServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.idega.core.accesscontrol.dao.PermissionDAO;
+import com.idega.core.accesscontrol.data.bean.ICPermission;
+import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.jackrabbit.repository.IdegaSessionProvider;
+import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
+import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
 import com.idega.util.FileUtil;
+import com.idega.util.ListUtil;
+import com.idega.util.StringUtil;
 import com.idega.util.expression.ELUtil;
 
 /**
@@ -50,32 +60,68 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	protected void doGet(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
 		try {
 			if (davResource.exists()) {
-//				if (davResource.isCollection())
-//					webdavResponse.setContentType(MimeTypeUtil.MIME_TYPE_HTML.concat(";charset=".concat(CoreConstants.ENCODING_UTF8.toLowerCase())));
-
-				writeResponse(webdavResponse, davResource, 0);
+				IWContext iwc = new IWContext(webdavRequest, webdavResponse, getServletContext());
+				writeResponse(iwc, webdavResponse, davResource, 0);
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
 			} else {
-				LOGGER.warning("Node '" + davResource.getResourcePath() + "' does not exist");
+				LOGGER.warning("Resource '" + davResource.getResourcePath() + "' does not exist");
+				throw new DavException(DavServletResponse.SC_NOT_FOUND);
 			}
+		} catch (DavException e) {
+			throw new DavException(e.getErrorCode(), e);
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error getting " + davResource.getHref(), e);
 			throw new DavException(DavServletResponse.SC_INTERNAL_SERVER_ERROR, e);
 		}
 	}
 
-	private void writeResponse(WebdavResponse webdavResponse, DavResource davResource, int level) throws IOException {
+	private void writeResponse(IWContext iwc, WebdavResponse webdavResponse, DavResource davResource, int level) throws IOException, DavException {
 		String name = davResource.getDisplayName();
 		String path = davResource.getResourcePath();
 		String prefix = RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT;
 		if (path.startsWith(prefix))
 			path = path.replaceFirst(prefix, CoreConstants.EMPTY);
 
+		boolean allowAll = path.startsWith(CoreConstants.PUBLIC_PATH) || path.startsWith(CoreConstants.CONTENT_PATH + "/themes/");
+		if (!allowAll) {
+			//	Need to resolve access rights
+			User user = iwc.isLoggedOn() ? iwc.getLoggedInUser() : null;
+			if (user == null)
+				throw new DavException(DavServletResponse.SC_FORBIDDEN, "User is not logged in, resource " + path + " is not accessible");
+
+			if (!iwc.isSuperAdmin()) {
+				if (iwc.getIWMainApplication().getSettings().getBoolean("jackrabbit_dav_check_permissions", Boolean.FALSE)) {
+					LOGGER.info("Resolve access rights for resource: " + path + " and user " + user);
+					Set<String> userRoles = iwc.getAccessController().getAllRolesForUser(user);
+					if (ListUtil.isEmpty(userRoles)) {
+						LOGGER.warning("User " + user + " does not have any roles!");
+						throw new DavException(DavServletResponse.SC_FORBIDDEN);
+					}
+
+					PermissionDAO permissionDAO = ELUtil.getInstance().getBean(PermissionDAO.class);
+					List<ICPermission> permissions = permissionDAO.findPermissions(path, new ArrayList<String>(userRoles));
+					if (ListUtil.isEmpty(permissions)) {
+						LOGGER.warning("User " + user + " does not have permission to read " + path);
+						throw new DavException(DavServletResponse.SC_FORBIDDEN);
+					}
+				}
+	//			AccessControlList acl = getRepository().getAccessControlList(path);
+	//			List<ICPermission> permissions = acl.getPermissions();
+	//			if (ListUtil.isEmpty(permissions)) {
+	//				LOGGER.warning("No permissions for resource: " + path + " and user " + user);
+	//			}
+			}
+		}
+
 		if (isCollection(davResource, name) && canDisplay(name)) {
 			//	TODO: implement
 //			writer.write("<a href=\"".concat(davResource.getHref()).concat("\">").concat(name).concat("</a>\n"));
 		} else {
 			try {
+				String contentType = MimeTypeUtil.resolveMimeTypeFromFileName(path);
+				if (!StringUtil.isEmpty(contentType))
+					webdavResponse.setContentType(contentType);
+
 				OutputStream output = webdavResponse.getOutputStream();
 				FileUtil.streamToOutputStream(getRepository().getInputStreamAsRoot(path), output);
 			} catch (Exception e) {
@@ -94,6 +140,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 
 	@Override
 	protected void doPost(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
+		LOGGER.info("Using default implementation of doPost method");
 		super.doPost(webdavRequest, webdavResponse, davResource);
 	}
 

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,7 +51,9 @@ import org.springframework.context.ApplicationEvent;
 import com.idega.builder.bean.AdvancedProperty;
 import com.idega.core.accesscontrol.business.LoginDBHandler;
 import com.idega.core.accesscontrol.business.LoginSession;
+import com.idega.core.accesscontrol.dao.UserLoginDAO;
 import com.idega.core.accesscontrol.data.LoginTable;
+import com.idega.core.accesscontrol.data.bean.UserLogin;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWMainApplicationShutdownEvent;
@@ -61,6 +64,7 @@ import com.idega.jackrabbit.repository.access.JackrabbitAccessControlList;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.jackrabbit.stream.RepositoryStream;
 import com.idega.presentation.IWContext;
+import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.access.AccessControlList;
 import com.idega.repository.authentication.AuthenticationBusiness;
@@ -187,21 +191,24 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public boolean uploadFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, String fileContentString,	String contentType)
-		throws RepositoryException {
+			throws RepositoryException {
 
 		try {
-			return uploadFile(parentPath, fileName, StringHandler.getStreamFromString(fileContentString), contentType, securityHelper.getSuperAdmin()) != null;
+			return uploadFile(parentPath, fileName, StringHandler.getStreamFromString(fileContentString), contentType,
+					securityHelper.getSuperAdmin()) != null;
 		} catch (Exception e) {
 			getLogger().log(Level.WARNING, "Error uploading file: " + fileContentString + "\n to: " + parentPath + fileName, e);
 		}
 		return false;
 	}
 	@Override
-	public boolean uploadXMLFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, String fileContentString) throws RepositoryException {
+	public boolean uploadXMLFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, String fileContentString)
+			throws RepositoryException {
 		return uploadFileAndCreateFoldersFromStringAsRoot(parentPath, fileName, fileContentString, MimeTypeUtil.MIME_TYPE_XML);
 	}
 	@Override
-	public boolean uploadFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, InputStream stream, String contentType) throws RepositoryException {
+	public boolean uploadFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, InputStream stream, String contentType)
+			throws RepositoryException {
 		return uploadFile(parentPath, fileName, stream, contentType, securityHelper.getSuperAdmin()) != null;
 	}
 	@Override
@@ -623,7 +630,6 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return null;
 		}
 
-
 		Session session = null;
 		try {
 			session = getSessionBySuperAdmin();
@@ -690,7 +696,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public Node updateFileContents(String absolutePath, InputStream fileContents, boolean createFile, AdvancedProperty... properties) throws RepositoryException {
+	public Node updateFileContents(String absolutePath, InputStream fileContents, boolean createFile, AdvancedProperty... properties)
+			throws RepositoryException {
 		return uploadFile(getParentPath(absolutePath), getNodeName(absolutePath), fileContents, null, getUser());
 	}
 	@Override
@@ -824,7 +831,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return null;
 		}
 
-		SimpleCredentials credentials = new SimpleCredentials(userNameOrId, StringUtil.isEmpty(password) ? CoreConstants.EMPTY.toCharArray() : password.toCharArray());
+		SimpleCredentials credentials = new SimpleCredentials(userNameOrId, StringUtil.isEmpty(password) ?
+				CoreConstants.EMPTY.toCharArray() :
+				password.toCharArray());
 		if (!ArrayUtil.isEmpty(attributes)) {
 			for (AdvancedProperty attribute: attributes) {
 				credentials.setAttribute(attribute.getId(), attribute.getValue());
@@ -835,46 +844,24 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public boolean generateUserFolders(String loginName) throws RepositoryException {
+	public boolean generateUserFolders(User user, String loginName) throws RepositoryException {
 		if (StringUtil.isEmpty(loginName)) {
 			getLogger().warning("User name is not defined");
 			return false;
 		}
 
 		String userPath = authenticationBusiness.getUserPath(loginName);
-		Node userNode = getNode(userPath, true, true);
-		if (userNode == null) {
-			throw new RepositoryException("Node at " + userPath + " can not be created!");
-		}
-		//	TODO: set access rights for userNode
-
-//		if (!getExistence(userPath)) {
-//			WebdavResource user = getWebdavResourceAuthenticatedAsRoot(userPath);
-//			user.mkcolMethod();
-//			user.close();
-//		}
+		if (!createFolderAsRoot(userPath))
+			throw new RepositoryException("Node at " + userPath + " can not be created for user " + user);
 
 		String userHomeFolder = getUserHomeFolderPath(loginName);
-		Node userHomeNode = getNode(userHomeFolder, true, false);
-		if (userHomeNode == null) {
-			throw new RepositoryException("Node at " + userHomeFolder + " can not be created!");
-		}
-		//	TODO: set access rights for userHomeNode
+		if (!createFolderAsRoot(userHomeFolder))
+			throw new RepositoryException("Home folder at " + userHomeFolder + " can not be created for user " + user);
 
-//		WebdavResource rootFolder = getWebdavResourceAuthenticatedAsRoot();
-//		String userFolderPath = getURI(getUserHomeFolderPath(loginName));
-//		rootFolder.mkcolMethod(userFolderPath);
-//		rootFolder.mkcolMethod(userFolderPath + FOLDER_NAME_DROPBOX);
-//		rootFolder.mkcolMethod(userFolderPath + FOLDER_NAME_PUBLIC);
-//		rootFolder.close();
+		createFolderAsRoot(userHomeFolder + RepositoryConstants.FOLDER_NAME_DROPBOX);
+		createFolderAsRoot(userHomeFolder + RepositoryConstants.FOLDER_NAME_PUBLIC);
 
-		try {
-			updateUserFolderPrivileges(loginName);
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
-		}
-
+		updateUserFolderPrivileges(user == null ? null : user.getId(), loginName);
 		return true;
 	}
 
@@ -882,7 +869,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return JackrabbitConstants.PATH_USERS_HOME_FOLDERS + CoreConstants.SLASH + loginName;
 	}
 
-	private void updateUserFolderPrivileges(String loginName) throws IOException, IOException {
+	private void updateUserFolderPrivileges(Integer userId, String loginName) throws RepositoryException {
 		//	TODO: implement!
 
 //		String userFolderPath = getURI(getUserHomeFolderPath(loginName));
@@ -1099,24 +1086,49 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public int getChildCountExcludingFoldersAndHiddenFiles(String path)
-			throws RepositoryException {
-		// TODO Auto-generated method stub
-		return 0;
+	public int getChildCountExcludingFoldersAndHiddenFiles(String path) throws RepositoryException {
+		List<String> children = getChildPathsExcludingFoldersAndHiddenFiles(path);
+		return ListUtil.isEmpty(children) ? 0 : children.size();
 	}
 
 	@Override
-	public List<String> getChildPathsExcludingFoldersAndHiddenFiles(String path)
-			throws RepositoryException {
-		// TODO Auto-generated method stub
-		return null;
+	public List<String> getChildPathsExcludingFoldersAndHiddenFiles(String path) throws RepositoryException {
+		RepositoryItem item = getRepositoryItemAsRootUser(path);
+		if (item == null)
+			return Collections.emptyList();
+
+		Collection<RepositoryItem> children = item.getChildren();
+		if (ListUtil.isEmpty(children))
+			return Collections.emptyList();
+
+		List<String> files = new ArrayList<String>();
+		for (RepositoryItem child: children) {
+			if (child.isCollection() || child.isHidden())
+				continue;
+
+			files.add(child.getPath());
+		}
+
+		return files;
 	}
 
 	@Override
-	public List<String> getChildFolderPaths(String path)
-			throws RepositoryException {
-		// TODO Auto-generated method stub
-		return null;
+	public List<String> getChildFolderPaths(String path) throws RepositoryException {
+		RepositoryItem item = getRepositoryItemAsRootUser(path);
+		if (item == null)
+			return Collections.emptyList();
+
+		Collection<RepositoryItem> children = item.getChildren();
+		if (ListUtil.isEmpty(children))
+			return Collections.emptyList();
+
+		List<String> folders = new ArrayList<String>();
+		for (RepositoryItem child: children) {
+			if (child.isCollection())
+				folders.add(child.getPath());
+		}
+
+		return folders;
 	}
 
 	@Override
@@ -1201,15 +1213,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public boolean isHiddenFile(String name) throws RepositoryException {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
 	public String getUserHomeFolder(User user) {
-		// TODO Auto-generated method stub
-		return null;
+		if (user == null)
+			return null;
+
+		UserLoginDAO loginDAO = ELUtil.getInstance().getBean(UserLoginDAO.class);
+		UserLogin login = loginDAO.findLoginForUser(user);
+		return getUserHomeFolderPath(login.getUserLogin());
 	}
 
 	@Override
@@ -1290,8 +1300,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public void storeAccessControlList(AccessControlList acl) {
-		// TODO Auto-generated method stub
+		if (acl == null)
+			return;
 
+		// TODO Auto-generated method stub
+		getLogger().warning("Implement! AccessCotrolList: " + acl);
 	}
 
 	@Override
