@@ -16,9 +16,11 @@ import com.idega.user.data.bean.User;
  * @author valdas
  *
  */
-@Service
+@Service(JackrabbitSecurityHelper.BEAN_NAME)
 @Scope(BeanDefinition.SCOPE_SINGLETON)
 public class JackrabbitSecurityHelper {
+
+	public static final String BEAN_NAME = "jackrabbitSecurityHelper";
 
 	private String superAdminId;
 

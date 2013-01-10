@@ -6,13 +6,14 @@ import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.jcr.Binary;
 import javax.jcr.RepositoryException;
+import javax.jcr.Session;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
 
 import com.idega.builder.business.BuilderLogicWrapper;
 import com.idega.idegaweb.IWMainApplication;
+import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.repository.RepositoryService;
 import com.idega.util.IOUtil;
 import com.idega.util.expression.ELUtil;
@@ -33,12 +34,14 @@ public class RepositoryStream extends AutoCloseInputStream {
 	}
 
 	private int read(boolean reTry) throws IOException {
-		try {
-			return in.read();
-		} catch (Exception e) {
-			Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error reading from " + path, e);
-			IOUtil.close(in);
-			in = null;
+		if (in != null) {
+			try {
+				return in.read();
+			} catch (Exception e) {
+				Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error reading from " + path, e);
+				IOUtil.close(in);
+				in = null;
+			}
 		}
 
 		if (reTry) {
@@ -47,32 +50,28 @@ public class RepositoryStream extends AutoCloseInputStream {
 			return read(false);
 		}
 
+		Session session = null;
 		RepositoryService repository = ELUtil.getInstance().getBean(RepositoryService.class);
-		Binary data = null;
 		try {
-			data = repository.getBinaryAsRoot(path);
-		} catch (RepositoryException e) {
-			e.printStackTrace();
-		}
-		if (data == null)
-			throw new IOException("Data can not be resolved for " + path);
+			JackrabbitSecurityHelper securityHelper = ELUtil.getInstance().getBean(JackrabbitSecurityHelper.BEAN_NAME);
+			session = repository.getSession(securityHelper.getSuperAdmin());
+			in = repository.getInputStream(session, path);
+			if (in == null)
+				throw new IOException("Can not open stream to " + path);
 
-		try {
-			in = data.getStream();
 			return in.read();
 		} catch (RepositoryException e) {
 			e.printStackTrace();
+		} finally {
+			repository.logout(session);
 		}
 
-		throw new IOException("Unable to open stream to " + path);
+		throw new IOException("Can not open stream to " + path);
 	}
 
 	@Override
 	public void close() throws IOException {
-		if (in == null)
-			return;
-
-		super.close();
+		IOUtil.close(in);
 	}
 
 }

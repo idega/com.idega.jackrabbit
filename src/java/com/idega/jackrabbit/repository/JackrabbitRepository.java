@@ -213,7 +213,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 	@Override
 	public boolean uploadFile(String uploadPath, String fileName, String contentType, InputStream fileInputStream) throws RepositoryException {
-		return uploadFile(uploadPath, fileName, fileInputStream, contentType, getUser()) != null;
+		return uploadFile(uploadPath, fileName, fileInputStream, contentType, securityHelper.getSuperAdmin()) != null;
+	}
+	@Override
+	public boolean uploadFile(String uploadPath, String fileName, String contentType, InputStream fileInputStream, User user) throws RepositoryException {
+		return uploadFile(uploadPath, fileName, fileInputStream, contentType, user) != null;
 	}
 	private Node uploadFile(String parentPath, String fileName, InputStream content, String mimeType, User user, AdvancedProperty... properties)
 		throws RepositoryException {
@@ -308,7 +312,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 				for (NodeIterator nodeIter = version.getNodes(); nodeIter.hasNext();) {
 					Node n = nodeIter.nextNode();
-					Binary binary = getBinary(n.getPath(), session, user, false);
+					Binary binary = getBinary(session, n.getPath(), false);
 					if (binary != null) {
 						RepositoryItemVersionInfo info = new RepositoryItemVersionInfo();
 						info.setPath(version.getPath());
@@ -502,7 +506,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			}
 
 			String pathToStream = file.getPath();
-			Binary data = getBinary(pathToStream, session, user, false);
+			Binary data = getBinary(session, pathToStream, false);
 			return getInputStream(data, pathToStream);
 		} finally {
 			logout(session);
@@ -510,27 +514,27 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public Binary getBinaryAsRoot(String path) throws RepositoryException {
-		return getBinary(path, null, securityHelper.getSuperAdmin(), true);
+	public InputStream getInputStream(Session session, String path) throws IOException, RepositoryException {
+		Binary data = getBinary(session, path, false);
+		if (data == null)
+			throw new IOException("Data can not be resolved for " + path);
+
+		return data.getStream();
 	}
 
-	private Binary getBinary(String path, Session session, User user, boolean closeSession) throws RepositoryException {
+	private Binary getBinary(Session session, String path, boolean closeSession) throws RepositoryException {
 		if (StringUtil.isEmpty(path))
 			return null;
 
-		try {
-			Node file = null;
-			if (session == null) {
-				file = getNode(path, false);
-			} else {
-				file = getNode(path, false, user, session, false);
-			}
+		if (session == null || !session.isLive()) {
+			getLogger().warning("JCR session is invalid");
+			return null;
+		}
 
+		try {
+			Node file = getNode(path, false, session, false);
 			if (file == null)
 				return null;
-
-			if (session == null)
-				session = file.getSession();
 
 			Node resource = getResourceNode(file);
 			Property prop = resource == null ? null : resource.getProperty(JcrConstants.JCR_DATA);
@@ -743,14 +747,14 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		Node node = null;
 		try {
 			session = getSession(user);
-			node = getNode(absolutePath, createIfNotFound, user, session, closeSession);
+			node = getNode(absolutePath, createIfNotFound, session, closeSession);
 			return node;
 		} finally {
 			if (node == null || closeSession)
 				logout(session);
 		}
 	}
-	private Node getNode(String absolutePath, boolean createIfNotFound, User user, Session session, boolean closeSession) throws RepositoryException {
+	private Node getNode(String absolutePath, boolean createIfNotFound, Session session, boolean closeSession) throws RepositoryException {
 		if (!isValidPath(absolutePath) || session == null || !session.isLive())
 			return null;
 
@@ -929,12 +933,20 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public boolean getExistence(String absolutePath) throws RepositoryException {
-		if (!isValidPath(absolutePath)) {
+		if (!isValidPath(absolutePath))
 			return false;
-		}
 
 		if (absolutePath.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
 			absolutePath = absolutePath.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
+
+		if (!absolutePath.startsWith(CoreConstants.PATH_FILES_ROOT)) {
+			int firstFilesAppearance = absolutePath.indexOf(CoreConstants.PATH_FILES_ROOT);
+			if (firstFilesAppearance != -1)
+				absolutePath = absolutePath.substring(firstFilesAppearance);
+		}
+		int semicolon = absolutePath.indexOf(CoreConstants.SEMICOLON);
+		if (semicolon != -1)
+			absolutePath = absolutePath.substring(0, semicolon);
 
 		Session session = null;
 		try {
@@ -957,7 +969,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		Session session = null;
 		try {
 			session = getSession(user);
-			Node node = getNode(path, true, user, session, false);
+			Node node = getNode(path, true, session, false);
 			if (node == null) {
 				getLogger().warning("Repository item was not found: " + path);
 				return null;
@@ -1372,7 +1384,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		try {
 			User user = getUser();
 			session = getSession(user);
-			data = getBinary(path, session, user, false);
+			data = getBinary(session, path, false);
 			return data == null ? -1 : data.getSize();
 		} finally {
 			if (data != null)

@@ -31,6 +31,7 @@ import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
 import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
+import com.idega.util.CoreUtil;
 import com.idega.util.FileUtil;
 import com.idega.util.ListUtil;
 import com.idega.util.StringUtil;
@@ -59,13 +60,17 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	@Override
 	protected void doGet(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
 		try {
-			if (davResource.exists()) {
+			String path = davResource.getResourcePath();
+			if (getRepository().getExistence(path)) {
 				IWContext iwc = new IWContext(webdavRequest, webdavResponse, getServletContext());
 				writeResponse(iwc, webdavResponse, davResource, 0);
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
 			} else {
-				LOGGER.warning("Resource '" + davResource.getResourcePath() + "' does not exist");
-				throw new DavException(DavServletResponse.SC_NOT_FOUND);
+				String message = "Resource '" + path + "' does not exist";
+				LOGGER.warning(message);
+				DavException davException = new DavException(DavServletResponse.SC_NOT_FOUND, message);
+				CoreUtil.sendExceptionNotification(message, davException);
+				throw davException;
 			}
 		} catch (DavException e) {
 			throw new DavException(e.getErrorCode(), e);
@@ -81,6 +86,9 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 		String prefix = RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT;
 		if (path.startsWith(prefix))
 			path = path.replaceFirst(prefix, CoreConstants.EMPTY);
+		int semicolon = path.indexOf(CoreConstants.SEMICOLON);
+		if (semicolon != -1)
+			path = path.substring(0, semicolon);
 
 		boolean allowAll = path.startsWith(CoreConstants.PUBLIC_PATH) || path.startsWith(CoreConstants.CONTENT_PATH + "/themes/");
 		if (!allowAll) {
