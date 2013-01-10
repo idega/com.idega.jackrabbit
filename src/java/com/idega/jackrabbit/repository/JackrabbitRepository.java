@@ -510,8 +510,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public Binary getBinary(String path) throws RepositoryException {
-		return getBinary(path, null, getUser(), true);
+	public Binary getBinaryAsRoot(String path) throws RepositoryException {
+		return getBinary(path, null, securityHelper.getSuperAdmin(), true);
 	}
 
 	private Binary getBinary(String path, Session session, User user, boolean closeSession) throws RepositoryException {
@@ -715,8 +715,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return getInputStream(path, user);
 	}
 
-	@Override
-	public Node getNode(String absolutePath) throws RepositoryException {
+	private Node getNode(String absolutePath) throws RepositoryException {
 		return getNode(absolutePath, true);
 	}
 	private Node getNode(String path, boolean closeSession) throws RepositoryException {

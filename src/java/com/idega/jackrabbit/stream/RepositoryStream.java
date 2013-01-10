@@ -50,7 +50,7 @@ public class RepositoryStream extends AutoCloseInputStream {
 		RepositoryService repository = ELUtil.getInstance().getBean(RepositoryService.class);
 		Binary data = null;
 		try {
-			data = repository.getBinary(path);
+			data = repository.getBinaryAsRoot(path);
 		} catch (RepositoryException e) {
 			e.printStackTrace();
 		}
