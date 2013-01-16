@@ -482,10 +482,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	public InputStream getInputStream(String path) throws IOException, RepositoryException {
 		return getInputStream(path, getUser());
 	}
+
 	@Override
 	public InputStream getInputStreamAsRoot(String path) throws IOException, RepositoryException {
 		return getInputStream(path, securityHelper.getSuperAdmin());
 	}
+
 	private InputStream getInputStream(String path, User user) throws IOException, RepositoryException {
 		if (StringUtil.isEmpty(path)) {
 			getLogger().warning("Path to resource is not defined!");
@@ -1293,8 +1295,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public OutputStream getOutputStream(String path) throws IOException, RepositoryException {
-		InputStream input = getInputStream(path);
+	public OutputStream getOutputStreamAsRoot(String path) throws IOException, RepositoryException {
+		InputStream input = getInputStreamAsRoot(path);
 		if (input == null)
 			return null;
 
@@ -1497,4 +1499,5 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			ELUtil.getInstance().autowire(this);
 		return authenticationBusiness;
 	}
+
 }
