@@ -4,7 +4,6 @@ import java.security.Principal;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Logger;
 
 import javax.jcr.AccessDeniedException;
 import javax.jcr.ItemNotFoundException;
@@ -29,7 +28,7 @@ import com.idega.util.StringUtil;
 
 public class RepositoryAccessManager extends DefaultAccessManager implements com.idega.repository.access.RepositoryAccessManager {
 
-	private static final Logger LOGGER = Logger.getLogger(RepositoryAccessManager.class.getName());
+//	private static final Logger LOGGER = Logger.getLogger(RepositoryAccessManager.class.getName());
 
 //	private boolean system, anonymous;
 
@@ -41,9 +40,8 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 
 	@Override
 	public boolean isGranted(Path absPath, int permissions) throws RepositoryException {
-		checkInitialized();
-
-		LOGGER.warning("Not implemented! Path: " + absPath.getNormalizedPath() + ", permissions: " + permissions);
+		//LOGGER.warning("Not implemented! Path: " + absPath.getNormalizedPath() + ", permissions: " + permissions);
+		//	TODO: implement
 		return true;
 	}
 
