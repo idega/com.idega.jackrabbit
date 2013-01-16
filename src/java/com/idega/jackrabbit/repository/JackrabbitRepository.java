@@ -222,6 +222,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	private Node uploadFile(String parentPath, String fileName, InputStream content, String mimeType, User user, AdvancedProperty... properties)
 		throws RepositoryException {
 
+		boolean measureUploadProcess = getApplication().getSettings().getBoolean("measure_upload_process", Boolean.TRUE);
+		long start = measureUploadProcess ? System.currentTimeMillis() : 0;
+
 		if (parentPath == null) {
 			getLogger().warning("Parent path is not defined!");
 			return null;
@@ -280,6 +283,10 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			IOUtil.close(content);
 
 			logout(session);
+
+			if (measureUploadProcess)
+				getLogger().info("It took " + (System.currentTimeMillis() - start) + " ms to upload " + parentPath + fileName + " as " + user +
+						" and set properties: " + properties);
 		}
 	}
 
