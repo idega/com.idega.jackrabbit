@@ -252,16 +252,17 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			session = getSession(user);
 			addListeners(session);
 
-			//	Creating folder if not exist
+			//	Creating folder if it does not exist
 			Node folder = createFolder(session, parentPath, true, false);
+			//	Getting file
+			file = getFileNode(folder, fileName);
+			//	Getting resource
+			resource = getResourceNode(file);
 
 			if (versionable) {
 				//	Logic for file with versions
 				versionManager = session.getWorkspace().getVersionManager();
 
-				file = getFileNode(folder, fileName);
-
-				resource = getResourceNode(file);
 				if (resource == null) {
 					resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
 				} else {
@@ -269,9 +270,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 					if (!versionManager.isCheckedOut(file.getPath()))
 						versionManager.checkout(file.getPath());
 				}
+
+				file.addMixin(JcrConstants.MIX_VERSIONABLE);
 			} else {
-				file = folder.addNode(fileName, JcrConstants.NT_FILE);
-				resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
+				if (resource == null)
+					resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
 			}
 			binary = session.getValueFactory().createBinary(stream);
 			resource.setProperty(JcrConstants.JCR_DATA, binary);
@@ -297,10 +300,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 			logout(session);
 
-			if (measureUploadProcess)
+			if (measureUploadProcess) {
+				if (fileName.startsWith(CoreConstants.SLASH) && parentPath.endsWith(CoreConstants.SLASH))
+					fileName = fileName.substring(1);
 				getLogger().info("******** It took " + (System.currentTimeMillis() - start) + " ms to upload " + parentPath + fileName + " as " + user +
 						(ArrayUtil.isEmpty(properties) ? CoreConstants.EMPTY : " and set properties: " +
 								new ArrayList<AdvancedProperty>(Arrays.asList(properties))));
+			}
 		}
 	}
 
@@ -312,7 +318,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 		try {
 			session.save();
-			versionManager.checkin(node.getPath());	//	Making initial version
+			versionManager.checkin(node.getPath());
 			return true;
 		} catch (Exception e) {
 			getLogger().log(Level.WARNING, "Error making version for " + node, e);
@@ -986,9 +992,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		Session session = null;
 		try {
 			session = getSessionBySuperAdmin();
-			Node root = session.getRootNode();
-			Node node = getNode(root, absolutePath, false, null);
-			return node != null;
+			return session.getNode(absolutePath) != null;
+		} catch (PathNotFoundException e) {
+			return false;
 		} finally {
 			logout(session);
 		}
