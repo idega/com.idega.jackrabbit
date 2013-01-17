@@ -44,7 +44,6 @@ import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.core.RepositoryImpl;
 import org.apache.jackrabbit.core.config.RepositoryConfig;
 import org.apache.jackrabbit.value.StringValue;
-import org.apache.jackrabbit.value.ValueFactoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEvent;
 
@@ -195,7 +194,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 		try {
 			return uploadFile(parentPath, fileName, StringHandler.getStreamFromString(fileContentString), contentType,
-					securityHelper.getSuperAdmin()) != null;
+					securityHelper.getSuperAdmin(), false) != null;
 		} catch (Exception e) {
 			getLogger().log(Level.WARNING, "Error uploading file: " + fileContentString + "\n to: " + parentPath + fileName, e);
 		}
@@ -209,18 +208,19 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public boolean uploadFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, InputStream stream, String contentType)
 			throws RepositoryException {
-		return uploadFile(parentPath, fileName, stream, contentType, securityHelper.getSuperAdmin()) != null;
+		return uploadFile(parentPath, fileName, stream, contentType, securityHelper.getSuperAdmin(), false) != null;
 	}
 	@Override
 	public boolean uploadFile(String uploadPath, String fileName, String contentType, InputStream fileInputStream) throws RepositoryException {
-		return uploadFile(uploadPath, fileName, fileInputStream, contentType, securityHelper.getSuperAdmin()) != null;
+		return uploadFile(uploadPath, fileName, fileInputStream, contentType, securityHelper.getSuperAdmin(), false) != null;
 	}
 	@Override
-	public boolean uploadFile(String uploadPath, String fileName, String contentType, InputStream fileInputStream, User user) throws RepositoryException {
-		return uploadFile(uploadPath, fileName, fileInputStream, contentType, user) != null;
+	public boolean uploadFile(String uploadPath, String fileName, String contentType, InputStream fileInputStream, User user)
+			throws RepositoryException {
+		return uploadFile(uploadPath, fileName, fileInputStream, contentType, user, false) != null;
 	}
-	private Node uploadFile(String parentPath, String fileName, InputStream content, String mimeType, User user, AdvancedProperty... properties)
-		throws RepositoryException {
+	private Node uploadFile(String parentPath, String fileName, InputStream stream, String mimeType, User user, boolean versionable,
+			AdvancedProperty... properties) throws RepositoryException {
 
 		boolean measureUploadProcess = getApplication().getSettings().getBoolean("measure_upload_process", Boolean.TRUE);
 		long start = measureUploadProcess ? System.currentTimeMillis() : 0;
@@ -233,7 +233,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			getLogger().warning("File name is not defined!");
 			return null;
 		}
-		if (content == null) {
+		if (stream == null) {
 			getLogger().warning("Input stream is invalid!");
 			return null;
 		}
@@ -242,52 +242,82 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		if (!parentPath.endsWith(CoreConstants.SLASH))
 			parentPath = parentPath.concat(CoreConstants.SLASH);
 
+		Node file = null;
+		Node resource = null;
 		Binary binary = null;
 		Session session = null;
+		VersionManager versionManager = null;
 		try {
+			//	Preparing
 			session = getSession(user);
 			addListeners(session);
-			VersionManager versionManager = session.getWorkspace().getVersionManager();
 
-			Node root = session.getRootNode();
-			Node folder = getFolderNode(root, parentPath);
-			Node file = getFileNode(folder, fileName);
-			Node resource = getResourceNode(file);
-			if (resource == null) {
-				resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
+			//	Creating folder if not exist
+			Node folder = createFolder(session, parentPath, true, false);
+
+			if (versionable) {
+				//	Logic for file with versions
+				versionManager = session.getWorkspace().getVersionManager();
+
+				file = getFileNode(folder, fileName);
+
+				resource = getResourceNode(file);
+				if (resource == null) {
+					resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
+				} else {
+					//	There are previous version(s) of this file
+					if (!versionManager.isCheckedOut(file.getPath()))
+						versionManager.checkout(file.getPath());
+				}
 			} else {
-				//	There are previous version(s) of this file
-				if (!versionManager.isCheckedOut(file.getPath()))
-					versionManager.checkout(file.getPath());
+				file = folder.addNode(fileName, JcrConstants.NT_FILE);
+				resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
 			}
+			binary = session.getValueFactory().createBinary(stream);
+			resource.setProperty(JcrConstants.JCR_DATA, binary);
 
 			mimeType = StringUtil.isEmpty(mimeType) ? MimeTypeUtil.resolveMimeTypeFromFileName(fileName) : mimeType;
 			mimeType = StringUtil.isEmpty(mimeType) ? MimeTypeUtil.MIME_TYPE_APPLICATION : mimeType;
 			resource.setProperty(JcrConstants.JCR_MIMETYPE, mimeType);
 			resource.setProperty(JcrConstants.JCR_ENCODING, CoreConstants.ENCODING_UTF8);
-			binary = ValueFactoryImpl.getInstance().createBinary(content);
-			resource.setProperty(JcrConstants.JCR_DATA, binary);
 			Calendar lastModified = Calendar.getInstance();
 			lastModified.setTimeInMillis(System.currentTimeMillis());
 			resource.setProperty(JcrConstants.JCR_LASTMODIFIED, lastModified);
 
 			session.save();
 
-			if (doMakeVersionable(versionManager, file))
-				return file;
+			if (versionable)
+				return doMakeVersionable(session, versionManager, file) ? file : null;
 
-			return null;
+			return file;
 		} finally {
 			if (binary != null)
 				binary.dispose();
-			IOUtil.close(content);
+			IOUtil.close(stream);
 
 			logout(session);
 
 			if (measureUploadProcess)
-				getLogger().info("It took " + (System.currentTimeMillis() - start) + " ms to upload " + parentPath + fileName + " as " + user +
-						" and set properties: " + properties);
+				getLogger().info("******** It took " + (System.currentTimeMillis() - start) + " ms to upload " + parentPath + fileName + " as " + user +
+						(ArrayUtil.isEmpty(properties) ? CoreConstants.EMPTY : " and set properties: " +
+								new ArrayList<AdvancedProperty>(Arrays.asList(properties))));
 		}
+	}
+
+	private boolean doMakeVersionable(Session session, VersionManager versionManager, Node node) throws RepositoryException {
+		if (versionManager == null || node == null)
+			return false;
+
+		session = session == null ? node.getSession() : session;
+
+		try {
+			session.save();
+			versionManager.checkin(node.getPath());	//	Making initial version
+			return true;
+		} catch (Exception e) {
+			getLogger().log(Level.WARNING, "Error making version for " + node, e);
+		}
+		return false;
 	}
 
 	@Override
@@ -408,20 +438,6 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		}
 
 		return node;
-	}
-
-	private boolean doMakeVersionable(VersionManager versionManager, Node node) {
-		if (versionManager == null || node == null)
-			return false;
-
-		try {
-			node.getSession().save();
-			versionManager.checkin(node.getPath());	//	Making initial version
-			return true;
-		} catch (Exception e) {
-			getLogger().log(Level.WARNING, "Error making version for " + node, e);
-		}
-		return false;
 	}
 
 	private void setDefaultProperties(Node node, String nodeType) throws RepositoryException {
@@ -620,19 +636,29 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return false;
 		}
 
-		Session session = null;
 		try {
-			session = getSession(user);
+			return createFolder(getSession(user), path, true, true) != null;
+		} catch (RepositoryException e) {
+			getLogger().log(Level.WARNING, "Error creating folder " + path, e);
+		}
+
+		return false;
+	}
+
+	private Node createFolder(Session session, String path, boolean saveSession, boolean logout) throws RepositoryException {
+		try {
 			addListeners(session);
 
 			Node root = session.getRootNode();
 			Node folder = getNode(root, path, JcrConstants.NT_FOLDER);
 
-			session.save();
+			if (saveSession)
+				session.save();
 
-			return folder != null;
+			return folder;
 		} finally {
-			logout(session);
+			if (logout)
+				logout(session);
 		}
 	}
 
@@ -711,7 +737,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public Node updateFileContents(String absolutePath, InputStream fileContents, boolean createFile, AdvancedProperty... properties)
 			throws RepositoryException {
-		return uploadFile(getParentPath(absolutePath), getNodeName(absolutePath), fileContents, null, getUser());
+		return uploadFile(getParentPath(absolutePath), getNodeName(absolutePath), fileContents, null, getUser(), true);
 	}
 	@Override
 	public Node updateFileContents(String absolutePath, InputStream fileContents, AdvancedProperty... properties) throws RepositoryException {
@@ -978,7 +1004,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		Session session = null;
 		try {
 			session = getSession(user);
-			Node node = getNode(path, true, session, false);
+			Node node = getNode(path, false, session, false);
 			if (node == null) {
 				getLogger().warning("Repository item was not found: " + path);
 				return null;
