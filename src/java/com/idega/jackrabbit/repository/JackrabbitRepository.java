@@ -658,7 +658,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			Node root = session.getRootNode();
 			Node folder = getNode(root, path, JcrConstants.NT_FOLDER);
 
-			if (saveSession)
+			if (folder != null && saveSession)
 				session.save();
 
 			return folder;
