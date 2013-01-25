@@ -746,6 +746,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return uploadFile(getParentPath(absolutePath), getNodeName(absolutePath), fileContents, null, getUser(), true);
 	}
 	@Override
+	public Node updateFileContentsAsRoot(String absolutePath, InputStream fileContents, boolean createFile, AdvancedProperty... properties)
+			throws RepositoryException {
+		return uploadFile(getParentPath(absolutePath), getNodeName(absolutePath), fileContents, null, securityHelper.getSuperAdmin(), true);
+	}
+	@Override
 	public Node updateFileContents(String absolutePath, InputStream fileContents, AdvancedProperty... properties) throws RepositoryException {
 		return updateFileContents(absolutePath, fileContents, Boolean.TRUE, properties);
 	}
