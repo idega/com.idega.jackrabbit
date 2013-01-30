@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -981,6 +983,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	public boolean getExistence(String absolutePath) throws RepositoryException {
 		if (!isValidPath(absolutePath))
 			return false;
+
+		try {
+			if (absolutePath.indexOf(CoreConstants.PERCENT) != -1)
+				absolutePath = URLDecoder.decode(absolutePath, CoreConstants.ENCODING_UTF8);
+		} catch (UnsupportedEncodingException e) {
+			getLogger().log(Level.WARNING, "Error decoding '" + absolutePath + "'", e);
+		}
 
 		if (absolutePath.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
 			absolutePath = absolutePath.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
