@@ -984,15 +984,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		if (!isValidPath(absolutePath))
 			return false;
 
-		try {
-			if (absolutePath.indexOf(CoreConstants.PERCENT) != -1)
-				absolutePath = URLDecoder.decode(absolutePath, CoreConstants.ENCODING_UTF8);
-		} catch (UnsupportedEncodingException e) {
-			getLogger().log(Level.WARNING, "Error decoding '" + absolutePath + "'", e);
-		}
-
-		if (absolutePath.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
-			absolutePath = absolutePath.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
+		absolutePath = getPath(absolutePath);
 
 		if (!absolutePath.startsWith(CoreConstants.PATH_FILES_ROOT)) {
 			int firstFilesAppearance = absolutePath.indexOf(CoreConstants.PATH_FILES_ROOT);
@@ -1314,7 +1306,18 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return null;
 
 		String uriPrefix = getWebdavServerURL();
-		return path.startsWith(uriPrefix) ? path.substring(uriPrefix.length()) : path;
+		path = path.startsWith(uriPrefix) ? path.substring(uriPrefix.length()) : path;
+
+		if (path.indexOf(CoreConstants.PERCENT) != -1) {
+			try {
+				path = URLDecoder.decode(path, CoreConstants.ENCODING_UTF8);
+			} catch (UnsupportedEncodingException e) {}
+		}
+
+		if (path.indexOf("//") != -1)
+			path = StringHandler.replace(path, "//", CoreConstants.SLASH);
+
+		return path;
 	}
 
 	@Override
