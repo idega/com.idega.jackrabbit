@@ -511,13 +511,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public InputStream getInputStream(String path) throws IOException, RepositoryException {
-		String tmpPath = getPath(path);
+		String tmpPath =  getPath(path);
 		if (StringUtil.isEmpty(tmpPath)) {
 			getLogger().warning("Path is not provided");
 			return null;
 		}
 
-		User user = tmpPath.startsWith(CoreConstants.PUBLIC_PATH) ? securityHelper.getSuperAdmin() : getUser();
+		User user = (CoreConstants.SLASH + tmpPath).startsWith(CoreConstants.PUBLIC_PATH) ? securityHelper.getSuperAdmin() : getUser();
 		return getInputStream(path, user);
 	}
 
