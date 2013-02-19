@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.apache.jackrabbit.server.SessionProvider;
 import org.apache.jackrabbit.webdav.DavException;
@@ -22,11 +23,13 @@ import org.apache.jackrabbit.webdav.WebdavResponse;
 import org.apache.jackrabbit.webdav.jcr.JCRWebdavServerServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.idega.core.accesscontrol.business.AccessController;
 import com.idega.core.accesscontrol.dao.PermissionDAO;
 import com.idega.core.accesscontrol.data.bean.ICPermission;
 import com.idega.core.file.util.MimeTypeUtil;
+import com.idega.idegaweb.IWMainApplication;
 import com.idega.jackrabbit.repository.IdegaSessionProvider;
-import com.idega.presentation.IWContext;
+import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
 import com.idega.user.data.bean.User;
@@ -50,6 +53,15 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	@Autowired
 	private RepositoryService repository;
 
+	@Autowired
+	private JackrabbitSecurityHelper securityHelper;
+
+	private JackrabbitSecurityHelper getSecurityHelper() {
+		if (securityHelper == null)
+			ELUtil.getInstance().autowire(this);
+		return securityHelper;
+	}
+
 	@Override
 	public RepositoryService getRepository() {
 		if (repository == null)
@@ -62,8 +74,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 		try {
 			String path = davResource.getResourcePath();
 			if (getRepository().getExistence(path)) {
-				IWContext iwc = new IWContext(webdavRequest, webdavResponse, getServletContext());
-				writeResponse(iwc, webdavResponse, davResource, 0);
+				writeResponse(webdavRequest.getSession(false), webdavResponse, davResource, 0);
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
 			} else {
 				String message = "Resource '" + path + "' does not exist";
@@ -80,7 +91,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 		}
 	}
 
-	private void writeResponse(IWContext iwc, WebdavResponse webdavResponse, DavResource davResource, int level) throws IOException, DavException {
+	private void writeResponse(HttpSession session, WebdavResponse webdavResponse, DavResource davResource, int level) throws IOException, DavException {
 		String name = davResource.getDisplayName();
 		String path = davResource.getResourcePath();
 		String prefix = RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT;
@@ -92,15 +103,18 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 
 		boolean allowAll = path.startsWith(CoreConstants.PUBLIC_PATH) || path.startsWith(CoreConstants.CONTENT_PATH + "/themes/");
 		if (!allowAll) {
+			IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
+			AccessController accessController = iwma.getAccessController();
+
 			//	Need to resolve access rights
-			User user = iwc.isLoggedOn() ? iwc.getLoggedInUser() : null;
+			User user = getSecurityHelper().getCurrentUser(session);
 			if (user == null)
 				throw new DavException(DavServletResponse.SC_FORBIDDEN, "User is not logged in, resource " + path + " is not accessible");
 
-			if (!iwc.isSuperAdmin()) {
-				if (iwc.getIWMainApplication().getSettings().getBoolean("jackrabbit_dav_check_permissions", Boolean.FALSE)) {
+			if (!getSecurityHelper().isSuperAdmin(user)) {
+				if (iwma.getSettings().getBoolean("jackrabbit_dav_check_permissions", Boolean.FALSE)) {
 					LOGGER.info("Resolve access rights for resource: " + path + " and user " + user);
-					Set<String> userRoles = iwc.getAccessController().getAllRolesForUser(user);
+					Set<String> userRoles = accessController.getAllRolesForUser(user);
 					if (ListUtil.isEmpty(userRoles)) {
 						LOGGER.warning("User " + user + " does not have any roles!");
 						throw new DavException(DavServletResponse.SC_FORBIDDEN);
