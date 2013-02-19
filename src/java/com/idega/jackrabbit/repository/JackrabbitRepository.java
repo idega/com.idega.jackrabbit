@@ -303,11 +303,14 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			logout(session);
 
 			if (measureUploadProcess) {
-				if (fileName.startsWith(CoreConstants.SLASH) && parentPath.endsWith(CoreConstants.SLASH))
-					fileName = fileName.substring(1);
-				getLogger().info("******** It took " + (System.currentTimeMillis() - start) + " ms to upload " + parentPath + fileName + " as " + user +
-						(ArrayUtil.isEmpty(properties) ? CoreConstants.EMPTY : " and set properties: " +
-								new ArrayList<AdvancedProperty>(Arrays.asList(properties))));
+				long duration = System.currentTimeMillis() - start;
+				if (duration >= 1000) {
+					if (fileName.startsWith(CoreConstants.SLASH) && parentPath.endsWith(CoreConstants.SLASH))
+						fileName = fileName.substring(1);
+					getLogger().info("******** It took " + duration + " ms to upload " + parentPath + fileName + " as " + user +
+							(ArrayUtil.isEmpty(properties) ? CoreConstants.EMPTY : " and set properties: " +
+									new ArrayList<AdvancedProperty>(Arrays.asList(properties))));
+				}
 			}
 		}
 	}
