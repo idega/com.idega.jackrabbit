@@ -72,18 +72,18 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		setLocale(locale);
 		setBundleIdentifier(bundleIdentifier);
 
-		InputStream slideSourceStream = getResourceInputStream(getLocalizableFilePath());
+		InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
 
 		Properties localizationProps = new Properties();
-		if (slideSourceStream != null) {
-			localizationProps.load(slideSourceStream);
+		if (sourceStream != null) {
+			localizationProps.load(sourceStream);
 		}
 
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		Map<String, String> props = new TreeMap(localizationProps);
 		setLookup(props);
 
-		IOUtil.closeInputStream(slideSourceStream);
+		IOUtil.closeInputStream(sourceStream);
 	}
 
 	protected InputStream getResourceInputStream(String resourcePath) {
@@ -163,7 +163,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	}
 
 	/**
-	 * @return <code>true</code> - if the value presents in slide bundle. <code>false</code> - in other case
+	 * @return <code>true</code> - if the value presents in repository bundle. <code>false</code> - in other case
 	 *
 	 */
 	@Override
