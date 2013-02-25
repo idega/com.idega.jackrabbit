@@ -56,7 +56,10 @@ public class IWBundleStarter implements IWBundleStartable {
 			stream = getConfig(bundle);
 		}
 
-		getRepository().initializeRepository(stream, "store");
+		getRepository().initializeRepository(stream, 
+				System.getProperty(
+					"idegaweb.jcr.home", 
+					"store"));
 	}
 
 //	private void initializeCustomNamespaces() throws Exception {
