@@ -1,7 +1,5 @@
 package com.idega.jackrabbit.business;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -9,7 +7,7 @@ import java.io.ObjectInputStream.GetField;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -18,17 +16,24 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
+import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWResourceBundle;
+import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryService;
+import com.idega.repository.event.RepositoryResourceLocalizer;
 import com.idega.util.CoreConstants;
+import com.idega.util.CoreUtil;
 import com.idega.util.IOUtil;
-import com.idega.util.SortedProperties;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
+import com.idega.util.datastructures.map.MapUtil;
 import com.idega.util.expression.ELUtil;
 import com.idega.util.messages.MessageResource;
 import com.idega.util.messages.MessageResourceImportanceLevel;
@@ -56,6 +61,15 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 								NON_BUNDLE_LOCALIZATION_FILE_EXTENSION = ".strings",
 								RESOURCE_IDENTIFIER = "repository_resource";
 
+	@Autowired
+	private RepositoryResourcesManager resourcesManager;
+
+	private RepositoryResourcesManager getRepositoryResourcesManager() {
+		if (resourcesManager == null)
+			ELUtil.getInstance().autowire(this);
+		return resourcesManager;
+	}
+
 	public JackrabbitResourceBundle() throws IOException {
 		super();
 	}
@@ -75,9 +89,8 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
 
 		Properties localizationProps = new Properties();
-		if (sourceStream != null) {
+		if (sourceStream != null)
 			localizationProps.load(sourceStream);
-		}
 
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		Map<String, String> props = new TreeMap(localizationProps);
@@ -105,53 +118,14 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 
 	@Override
 	public synchronized void storeState() {
-		Properties props = new SortedProperties();
-		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-
-		if (getLookup() != null) {
-			for (Iterator<String> iter = getLookup().keySet().iterator(); iter.hasNext();) {
-				String key = iter.next();
-				if (key != null) {
-					Object value = getLookup().get(key);
-					if (value != null) {
-						props.put(key, value);
-					}
-				}
-			}
-
-			try {
-				props.store(byteStream, CoreConstants.EMPTY);
-			} catch (IOException e) {
-				LOGGER.log(Level.WARNING, "Can't store properties to ByteArrayOutputStream", e);
-			}
-		}
-
-		InputStream stream = getResourceInputStream(getLocalizableFilePath());
-		if (stream == null) {
-			LOGGER.warning("Can't save localization file '" + getLocalizableFilePath() + "' to repository - unable to create empty file!");
-			return;
-		} else {
-			IOUtil.close(stream);
-		}
-
-		InputStream tmp = null;
-		try {
-			tmp = new ByteArrayInputStream(byteStream.toByteArray());
-			getRepositoryService().updateFileContentsAsRoot(getLocalizableFilePath(), tmp, true);
-		} catch (Exception e) {
-			LOGGER.log(Level.WARNING, "Can't save localization file '" + getLocalizableFilePath() + "' to repository", e);
-			throw new RuntimeException(e);
-		} finally {
-			IOUtil.close(byteStream);
-			IOUtil.close(tmp);
-		}
+		getRepositoryResourcesManager().storeState(getLookup(), getLocalizableFilePath());
 	}
 
 	@Override
 	public String getLocalizedString(String key) {
-		Object returnObj = getLookup().get(key);
+		String returnObj = getLookup().get(key);
 		if (returnObj != null && !"null".equals(returnObj)) {
-			return String.valueOf(returnObj);
+			return returnObj;
 		} else {
 			return null;
 		}
@@ -172,23 +146,22 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	}
 
 	private String getLocalizableFilePath() {
-		return getLocalisableFolderPath() + getLocalisableFileName();
+		return getLocalizableFolderPath() + getLocalizableFileName();
 	}
 
-	private String getLocalisableFolderPath() {
+	private String getLocalizableFolderPath() {
 		StringBuffer filePath = new StringBuffer(LOCALIZATION_PATH);
 
-		if(!StringUtil.isEmpty(getBundleIdentifier()) && !MessageResource.NO_BUNDLE.equals(getBundleIdentifier())) {
+		if (!StringUtil.isEmpty(getBundleIdentifier()) && !MessageResource.NO_BUNDLE.equals(getBundleIdentifier()))
 			filePath.append(getBundleIdentifier()).append(CoreConstants.SLASH);
-		}
 
 		return filePath.toString();
 	}
 
-	private String getLocalisableFileName() {
+	private String getLocalizableFileName() {
 		StringBuffer fileName = new StringBuffer();
 
-		if(StringUtil.isEmpty(getBundleIdentifier()) || MessageResource.NO_BUNDLE.equals(getBundleIdentifier())) {
+		if (StringUtil.isEmpty(getBundleIdentifier()) || MessageResource.NO_BUNDLE.equals(getBundleIdentifier())) {
 			fileName.append(NON_BUNDLE_LOCALIZATION_FILE_NAME)
 					.append(CoreConstants.UNDER).append(getLocale())
 					.append(NON_BUNDLE_LOCALIZATION_FILE_EXTENSION);
@@ -219,36 +192,61 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	 * @return object that was found in resource or set to it, null - if there are no values with specified key
 	 */
 	@Override
-	public Object getMessage(Object key) {
-		return getLocalizedString(String.valueOf(key));
+	public String getMessage(String key) {
+		return getLocalizedString(key);
 	}
 
 	/**
-	 * @return object that was set or null if there was a failure setting object
+	 * @return Message that was set or null if there was a failure setting object
 	 */
 	@Override
-	public Object setMessage(Object key, Object value) {
-		getLookup().put(String.valueOf(key), String.valueOf(value));
-		storeState();
+	public String setMessage(String key, String value) {
+		String currentValue = getLookup().get(key);
+		if (!StringUtil.isEmpty(currentValue) && currentValue.equals(value))
+			return value;
+
+		getLookup().put(key, value);
+
+		IWContext iwc = CoreUtil.getIWContext();
+		if (iwc == null || IWMainApplication.getDefaultIWMainApplication().getSettings().getBoolean("flush_each_localization_prop", Boolean.FALSE)) {
+			storeState();
+		} else {
+			RepositoryResourceLocalizer localizer = null;
+			HttpServletRequest request = iwc.getRequest();
+			Object previousLocalizations = request.getAttribute(RepositoryService.REQUEST_LOCALIZATIONS);
+			if (previousLocalizations instanceof RepositoryResourceLocalizer) {
+				localizer = (RepositoryResourceLocalizer) previousLocalizations;
+				Map<String, Map<String, String>> allLocalizations = localizer.getLocalizations();
+				Map<String, String> currentLocalizations = allLocalizations.get(getLocalizableFilePath());
+				MapUtil.append(currentLocalizations, getLookup());
+				allLocalizations.put(getLocalizableFilePath(), currentLocalizations);
+				localizer.setLocalizations(allLocalizations);
+			} else {
+				Map<String, Map<String, String>> localizations = new HashMap<String, Map<String,String>>();
+				localizations.put(getLocalizableFilePath(), getLookup());
+				localizer = new RepositoryResourceLocalizer(localizations);
+			}
+			request.setAttribute(RepositoryService.REQUEST_LOCALIZATIONS, localizer);
+		}
+
 		return value;
 	}
 
 	@Override
-	public void setMessages(Map<Object, Object> values) {
+	public void setMessages(Map<String, String> values) {
 		for (Object key : values.keySet())
 			setString(String.valueOf(key), String.valueOf(values.get(key)));
 
 		storeState();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Set<String> getAllLocalizedKeys() {
 		return getLookup().keySet();
 	}
 
 	@Override
-	public void removeMessage(Object key) {
+	public void removeMessage(String key) {
 		getLookup().remove(key);
 		storeState();
 	}
@@ -274,5 +272,10 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error reading objects from the stream: " + in, e);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return "Repository resource: " + getBundleIdentifier() + " for " + getLocale();
 	}
 }
