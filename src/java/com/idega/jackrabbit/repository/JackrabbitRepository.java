@@ -1663,7 +1663,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			in = new FileInputStream(inputPath + fileName);
 
 			session = getSessionBySuperAdmin();
-			session.importXML(session.getRootNode().getPath(), in, ImportUUIDBehavior.IMPORT_UUID_COLLISION_REPLACE_EXISTING);
+			session.importXML(session.getRootNode().getPath(), in, ImportUUIDBehavior.IMPORT_UUID_COLLISION_REPLACE_EXISTING);	//	TODO: use another UUID behavior?
 			return true;
 		} catch (Exception e) {
 			getLogger().log(Level.WARNING, "Error importing data from " + inputPath, e);
