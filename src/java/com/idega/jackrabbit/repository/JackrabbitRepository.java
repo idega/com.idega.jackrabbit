@@ -2,6 +2,9 @@ package com.idega.jackrabbit.repository;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -21,6 +24,7 @@ import java.util.zip.ZipInputStream;
 
 import javax.jcr.Binary;
 import javax.jcr.Credentials;
+import javax.jcr.ImportUUIDBehavior;
 import javax.jcr.LoginException;
 import javax.jcr.NoSuchWorkspaceException;
 import javax.jcr.Node;
@@ -47,7 +51,6 @@ import org.apache.jackrabbit.core.RepositoryImpl;
 import org.apache.jackrabbit.core.config.RepositoryConfig;
 import org.apache.jackrabbit.value.StringValue;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEvent;
 
 import com.idega.builder.bean.AdvancedProperty;
 import com.idega.core.accesscontrol.business.LoginDBHandler;
@@ -56,9 +59,11 @@ import com.idega.core.accesscontrol.dao.UserLoginDAO;
 import com.idega.core.accesscontrol.data.LoginTable;
 import com.idega.core.accesscontrol.data.bean.UserLogin;
 import com.idega.core.file.util.MimeTypeUtil;
+import com.idega.idegaweb.IWBundle;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWMainApplicationShutdownEvent;
 import com.idega.io.ZipInstaller;
+import com.idega.jackrabbit.IWBundleStarter;
 import com.idega.jackrabbit.JackrabbitConstants;
 import com.idega.jackrabbit.bean.JackrabbitRepositoryItem;
 import com.idega.jackrabbit.repository.access.JackrabbitAccessControlList;
@@ -78,6 +83,7 @@ import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
 import com.idega.util.FileUtil;
 import com.idega.util.IOUtil;
+import com.idega.util.IWTimestamp;
 import com.idega.util.ListUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
@@ -130,7 +136,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public void initializeRepository(InputStream configStream, String repositoryName) throws Exception {
 		try {
-			repository = RepositoryImpl.create(RepositoryConfig.create(configStream, repositoryName));
+			RepositoryConfig config = RepositoryConfig.create(configStream, repositoryName);
+			repository = RepositoryImpl.create(config);
 		} finally {
 			IOUtil.close(configStream);
 		}
@@ -182,12 +189,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		if (repository instanceof org.apache.jackrabbit.api.JackrabbitRepository) {
 			((org.apache.jackrabbit.api.JackrabbitRepository) repository).shutdown();
 		}
+		repository = null;
 	}
 	@Override
-	public void onApplicationEvent(ApplicationEvent event) {
-		if (event instanceof IWMainApplicationShutdownEvent) {
-			this.shutdown();
-		}
+	public void onApplicationEvent(IWMainApplicationShutdownEvent event) {
+		this.shutdown();
 	}
 
 	@Override
@@ -249,6 +255,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		Binary binary = null;
 		Session session = null;
 		VersionManager versionManager = null;
+		boolean closeStream = true;
 		try {
 			//	Preparing
 			session = getSession(user);
@@ -269,8 +276,21 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 					resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
 				} else {
 					//	There are previous version(s) of this file
-					if (!versionManager.isCheckedOut(file.getPath()))
-						versionManager.checkout(file.getPath());
+					if (!versionManager.isCheckedOut(file.getPath())) {
+						try {
+							versionManager.checkout(file.getPath());
+						} catch (Exception e) {
+							getLogger().log(Level.WARNING, "Error updating contents of " + parentPath + fileName, e);
+
+							//versionManager.merge(file.getPath(), session.getWorkspace().getName(), true);
+
+							if (doRestoreToTheLatestVersion(session, versionManager, file)) {
+								closeStream = false;
+								return uploadFile(parentPath, fileName, stream, mimeType, user, versionable, properties);
+							}
+							return null;
+						}
+					}
 				}
 
 				file.addMixin(JcrConstants.MIX_VERSIONABLE);
@@ -298,7 +318,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		} finally {
 			if (binary != null)
 				binary.dispose();
-			IOUtil.close(stream);
+			if (closeStream)
+				IOUtil.close(stream);
 
 			logout(session);
 
@@ -329,6 +350,35 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			getLogger().log(Level.WARNING, "Error making version for " + node, e);
 		}
 		return false;
+	}
+
+	private boolean doRestoreToTheLatestVersion(Session session, VersionManager versionManager, Node file) throws RepositoryException {
+		VersionHistory history = null;
+		try {
+			history = versionManager.getVersionHistory(file.getPath());
+		} catch (Exception e) {}
+
+		if (history == null) {
+			//versionManager.restoreByLabel(file.getPath(), "1.0", true);
+			session.save();
+			versionManager.checkin(file.getPath());
+		} else {
+			Version theLatest = null;
+			for (VersionIterator versionIter = history.getAllVersions(); versionIter.hasNext();) {
+				Version version = versionIter.nextVersion();
+				if (theLatest == null) {
+					theLatest = version;
+					continue;
+				}
+
+				if (theLatest.getCreated().before(version.getCreated()))
+					theLatest = version;
+			}
+			versionManager.restore(theLatest, true);
+		}
+		session.save();
+
+		return true;
 	}
 
 	@Override
@@ -1564,6 +1614,64 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		if (authenticationBusiness == null)
 			ELUtil.getInstance().autowire(this);
 		return authenticationBusiness;
+	}
+
+	@Override
+	public boolean doExportWorkspace(String workspaceName, String outputPath) throws IOException, RepositoryException {
+		Session session = null;
+		OutputStream out = null;
+		try {
+			if (!StringUtil.isEmpty(outputPath) && !outputPath.endsWith(File.separator))
+				outputPath = outputPath.concat(File.separator);
+			else
+				outputPath = CoreConstants.EMPTY;
+			String fileName = "store_export.xml";
+			FileUtil.createFileAndFolder(outputPath, fileName);
+			out = new FileOutputStream(outputPath + fileName);
+
+			session = getSessionBySuperAdmin();
+			session.exportSystemView(session.getRootNode().getPath(), out, false, false);
+			return true;
+		} finally {
+			logout(session);
+			IOUtil.close(out);
+		}
+	}
+
+	@Override
+	public boolean doImportWorkspace(String workspaceName, String inputPath) throws IOException, RepositoryException {
+		Session session = null;
+		InputStream in = null;
+		try {
+			String path = System.getProperty("idegaweb.jcr.home", "store");
+			File store = new File(path);
+			File backup = new File(store.getAbsolutePath() + "_backup_" + IWTimestamp.RightNow().getDateString("yyyy-MM-dd_HH-mm-ss"));
+			if (!store.renameTo(backup))
+				return false;
+
+			shutdown();
+
+			System.setProperty("org.apache.jackrabbit.version.recovery", Boolean.FALSE.toString());
+			IWBundle bundle = IWMainApplication.getDefaultIWMainApplication().getBundle(JackrabbitConstants.IW_BUNDLE_IDENTIFIER);
+			initializeRepository(IWBundleStarter.getConfig(bundle), path);
+
+			if (!StringUtil.isEmpty(inputPath) && !inputPath.endsWith(File.separator))
+				inputPath = inputPath.concat(File.separator);
+			else
+				inputPath = CoreConstants.EMPTY;
+			String fileName = "store_export.xml";
+			in = new FileInputStream(inputPath + fileName);
+
+			session = getSessionBySuperAdmin();
+			session.importXML(session.getRootNode().getPath(), in, ImportUUIDBehavior.IMPORT_UUID_COLLISION_REPLACE_EXISTING);
+			return true;
+		} catch (Exception e) {
+			getLogger().log(Level.WARNING, "Error importing data from " + inputPath, e);
+		} finally {
+			logout(session);
+			IOUtil.close(in);
+		}
+		return false;
 	}
 
 }

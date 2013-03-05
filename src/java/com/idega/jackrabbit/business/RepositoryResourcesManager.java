@@ -36,7 +36,7 @@ import com.idega.util.messages.MessageResourceFactory;
 
 @Service
 @Scope(BeanDefinition.SCOPE_SINGLETON)
-public class RepositoryResourcesManager extends DefaultSpringBean implements ApplicationListener {
+public class RepositoryResourcesManager extends DefaultSpringBean implements ApplicationListener<ApplicationEvent> {
 
 	@Autowired
 	private MessageResourceFactory messageResourceFactory;

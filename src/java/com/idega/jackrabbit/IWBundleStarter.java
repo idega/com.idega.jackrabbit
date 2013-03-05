@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.idega.idegaweb.IWBundle;
 import com.idega.idegaweb.IWBundleStartable;
-import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.repository.RepositoryService;
 import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
@@ -28,13 +27,13 @@ import com.idega.util.expression.ELUtil;
 public class IWBundleStarter implements IWBundleStartable {
 
 	private static final Logger LOGGER = Logger.getLogger(IWBundleStarter.class.getName());
-	private static final String CONFIG_FILE = "WEB-INF/repository.xml";
+	public static final String CONFIG_FILE = "WEB-INF/repository.xml";
 
 	@Autowired
 	private RepositoryService repository;
 
-	@Autowired
-	private JackrabbitSecurityHelper securityHelper;
+//	@Autowired
+//	private JackrabbitSecurityHelper securityHelper;
 
 	@Override
 	public void start(IWBundle starterBundle) {
@@ -56,10 +55,7 @@ public class IWBundleStarter implements IWBundleStartable {
 			stream = getConfig(bundle);
 		}
 
-		getRepository().initializeRepository(stream, 
-				System.getProperty(
-					"idegaweb.jcr.home", 
-					"store"));
+		getRepository().initializeRepository(stream, System.getProperty("idegaweb.jcr.home", "store"));
 	}
 
 //	private void initializeCustomNamespaces() throws Exception {
@@ -98,10 +94,10 @@ public class IWBundleStarter implements IWBundleStartable {
 		return IOUtil.getStreamFromJar(JackrabbitConstants.IW_BUNDLE_IDENTIFIER, CONFIG_FILE);
 	}
 
-	private InputStream getConfig(IWBundle bundle) throws IOException {
+	public static InputStream getConfig(IWBundle bundle) throws IOException {
 		String realPath = bundle.getRealPath();
 		if (StringUtil.isEmpty(realPath)) {
-			LOGGER.warning("Real path of bundle " + getClass().getName() + " is undefined!");
+			LOGGER.warning("Real path of bundle " + bundle.getBundleIdentifier() + " is undefined!");
 			return null;
 		}
 
@@ -125,11 +121,11 @@ public class IWBundleStarter implements IWBundleStartable {
 		return repository;
 	}
 
-	private JackrabbitSecurityHelper getSecurityHelper() {
-		if (securityHelper == null)
-			ELUtil.getInstance().autowire(this);
-		return securityHelper;
-	}
+//	private JackrabbitSecurityHelper getSecurityHelper() {
+//		if (securityHelper == null)
+//			ELUtil.getInstance().autowire(this);
+//		return securityHelper;
+//	}
 
 	@Override
 	public void stop(IWBundle starterBundle) {
