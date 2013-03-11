@@ -38,7 +38,7 @@ public class RepositoryStream extends AutoCloseInputStream {
 			try {
 				return in.read();
 			} catch (Exception e) {
-				Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error reading from " + path, e);
+				Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error reading from " + path);
 				IOUtil.close(in);
 				in = null;
 			}
