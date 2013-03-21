@@ -3,6 +3,7 @@ package com.idega.jackrabbit.stream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -10,6 +11,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
+import org.springframework.util.ReflectionUtils;
 
 import com.idega.builder.business.BuilderLogicWrapper;
 import com.idega.idegaweb.IWMainApplication;
@@ -28,17 +30,34 @@ public class RepositoryStream extends AutoCloseInputStream {
 		this.path = path;
 	}
 
-	@Override
-	public int read() throws IOException {
-		return read(true);
+	private Method getMethod(String name) {
+		try {
+			return InputStream.class.getMethod(name);
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
-	private int read(boolean reTry) throws IOException {
+	@Override
+	public int available() throws IOException {
+		Integer available = execute(true, getMethod("available"));
+		return available instanceof Integer ? available : 0;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T execute(boolean reTry, Method method) throws IOException {
+		if (method == null)
+			return null;
+
 		if (in != null) {
 			try {
-				return in.read();
+				Object o = ReflectionUtils.invokeMethod(method, in);
+				return (T) o;
 			} catch (Exception e) {
-				Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error reading from " + path);
+				Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error executing method " + method + " on " + in +". Path " + path);
 				IOUtil.close(in);
 				in = null;
 			}
@@ -47,7 +66,7 @@ public class RepositoryStream extends AutoCloseInputStream {
 		if (reTry) {
 			BuilderLogicWrapper builderLogic = ELUtil.getInstance().getBean(BuilderLogicWrapper.SPRING_BEAN_NAME_BUILDER_LOGIC_WRAPPER);
 			builderLogic.getBuilderService(IWMainApplication.getDefaultIWApplicationContext()).clearAllCaches();
-			return read(false);
+			return execute(false, method);
 		}
 
 		Session session = null;
@@ -59,14 +78,23 @@ public class RepositoryStream extends AutoCloseInputStream {
 			if (in == null)
 				throw new IOException("Can not open stream to " + path);
 
-			return in.read();
+			Object o = ReflectionUtils.invokeMethod(method, in);
+			return (T) o;
 		} catch (RepositoryException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			repository.logout(session);
 		}
 
 		throw new IOException("Can not open stream to " + path);
+	}
+
+	@Override
+	public int read() throws IOException {
+		Integer read = execute(true, getMethod("read"));
+		return read instanceof Integer ? read : 0;
 	}
 
 	@Override
