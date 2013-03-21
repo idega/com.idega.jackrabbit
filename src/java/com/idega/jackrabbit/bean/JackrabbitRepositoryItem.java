@@ -67,7 +67,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	public long getLength() {
 		if (size == null)
 			try {
-				size = getRepositoryService().getLength(path);
+				size = getRepositoryService().getLength(path, user);
 			} catch (RepositoryException e) {
 				getLogger().log(Level.WARNING, "Error getting size of " + path, e);
 			}

@@ -1494,13 +1494,17 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public long getLength(String path) throws RepositoryException {
+		return getLength(path, getUser());
+	}
+	@Override
+	public long getLength(String path, User user) throws RepositoryException {
 		if (StringUtil.isEmpty(path))
 			return -1;
 
 		Binary data = null;
 		Session session = null;
 		try {
-			User user = getUser();
+			user = user == null ? getUser() : user;
 			session = getSession(user);
 			data = getBinary(session, path, false);
 			return data == null ? -1 : data.getSize();
