@@ -644,7 +644,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return null;
 		}
 
-		return StringUtil.isEmpty(path) ? data.getStream() : new RepositoryStream(path, data.getStream());
+		InputStream stream = data.getStream();
+		return StringUtil.isEmpty(path) ? stream : new RepositoryStream(path, stream);
 	}
 
 	private User getUser() throws RepositoryException {

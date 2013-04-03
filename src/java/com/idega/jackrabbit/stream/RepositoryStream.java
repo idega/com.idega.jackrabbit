@@ -30,9 +30,10 @@ public class RepositoryStream extends AutoCloseInputStream {
 		this.path = path;
 	}
 
-	private Method getMethod(String name) {
+	private Method getMethod(String name, Class<?>... paramsTypes) {
 		try {
-			return InputStream.class.getMethod(name);
+			Method m = InputStream.class.getMethod(name, paramsTypes);
+			return m;
 		} catch (SecurityException e) {
 			e.printStackTrace();
 		} catch (NoSuchMethodException e) {
@@ -48,13 +49,13 @@ public class RepositoryStream extends AutoCloseInputStream {
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T> T execute(boolean reTry, Method method) throws IOException {
+	private <T> T execute(boolean reTry, Method method, Object... params) throws IOException {
 		if (method == null)
 			return null;
 
 		if (in != null) {
 			try {
-				Object o = ReflectionUtils.invokeMethod(method, in);
+				Object o = ReflectionUtils.invokeMethod(method, in, params);
 				return (T) o;
 			} catch (Exception e) {
 				Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error executing method " + method + " on " + in +". Path " + path);
@@ -66,7 +67,7 @@ public class RepositoryStream extends AutoCloseInputStream {
 		if (reTry) {
 			BuilderLogicWrapper builderLogic = ELUtil.getInstance().getBean(BuilderLogicWrapper.SPRING_BEAN_NAME_BUILDER_LOGIC_WRAPPER);
 			builderLogic.getBuilderService(IWMainApplication.getDefaultIWApplicationContext()).clearAllCaches();
-			return execute(false, method);
+			return execute(false, method, params);
 		}
 
 		Session session = null;
@@ -78,7 +79,7 @@ public class RepositoryStream extends AutoCloseInputStream {
 			if (in == null)
 				throw new IOException("Can not open stream to " + path);
 
-			Object o = ReflectionUtils.invokeMethod(method, in);
+			Object o = ReflectionUtils.invokeMethod(method, in, params);
 			return (T) o;
 		} catch (RepositoryException e) {
 			e.printStackTrace();
@@ -94,6 +95,18 @@ public class RepositoryStream extends AutoCloseInputStream {
 	@Override
 	public int read() throws IOException {
 		Integer read = execute(true, getMethod("read"));
+		return read instanceof Integer ? read : 0;
+	}
+
+	@Override
+	public int read(byte[] b, int off, int len) throws IOException {
+		Integer read = execute(true, getMethod("read", new Class<?>[] {byte[].class, int.class, int.class}), new Object[] {b, off, len});
+		return read instanceof Integer ? read : 0;
+	}
+
+	@Override
+	public int read(byte[] b) throws IOException {
+		Integer read = execute(true, getMethod("read", new Class<?>[] {byte[].class}), new Object[] {b});
 		return read instanceof Integer ? read : 0;
 	}
 
