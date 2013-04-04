@@ -4,8 +4,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
@@ -58,7 +56,6 @@ public class RepositoryStream extends AutoCloseInputStream {
 				Object o = ReflectionUtils.invokeMethod(method, in, params);
 				return (T) o;
 			} catch (Exception e) {
-				Logger.getLogger(getClass().getName()).log(Level.WARNING, "Error executing method " + method + " on " + in +". Path " + path);
 				IOUtil.close(in);
 				in = null;
 			}
