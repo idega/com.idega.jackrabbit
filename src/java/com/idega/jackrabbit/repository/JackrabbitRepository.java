@@ -113,6 +113,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	private IWMainApplication getApplication() {
+		return getApplication(true);
+	}
+	private IWMainApplication getApplication(boolean defaultApp) {
+		if (defaultApp)
+			return IWMainApplication.getDefaultIWMainApplication();
+
 		IWContext iwc = CoreUtil.getIWContext();
 		return iwc == null ? IWMainApplication.getDefaultIWMainApplication() : iwc.getIWMainApplication();
 	}
