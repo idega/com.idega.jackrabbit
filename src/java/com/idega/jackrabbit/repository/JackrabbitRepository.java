@@ -1075,6 +1075,10 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public JackrabbitRepositoryItem getRepositoryItem(User user, String path) throws RepositoryException {
+		if (StringUtil.isEmpty(path)) {
+			getLogger().warning("Path is not provided!");
+			return null;
+		}
 		if (user == null) {
 			getLogger().warning("User is unknown!");
 			return null;
