@@ -70,8 +70,10 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 
 	@Override
 	protected void doGet(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
+		String path = null;
+		long start = System.currentTimeMillis();
 		try {
-			String path = davResource.getResourcePath();
+			path = davResource.getResourcePath();
 			if (getRepository().getExistence(path)) {
 				writeResponse(webdavRequest.getSession(false), webdavResponse, davResource, 0);
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
@@ -86,6 +88,11 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error getting " + davResource.getHref(), e);
 			throw new DavException(DavServletResponse.SC_INTERNAL_SERVER_ERROR, e);
+		} finally {
+			long duration = System.currentTimeMillis() - start;
+			if (duration >= 50) {
+				LOGGER.info("It took " + duration + " ms to serve " + path);
+			}
 		}
 	}
 
