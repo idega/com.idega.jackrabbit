@@ -5,7 +5,9 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectInputStream.GetField;
 import java.io.ObjectOutputStream;
+import java.io.Reader;
 import java.io.Serializable;
+import java.io.StringReader;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
@@ -88,9 +90,19 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 
 		InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
 
+		Reader reader = null;
 		Properties localizationProps = new Properties();
-		if (sourceStream != null)
-			localizationProps.load(sourceStream);
+		if (sourceStream != null) {
+			try {
+				String content = StringHandler.getContentFromInputStream(sourceStream);
+				reader = new StringReader(content);
+				localizationProps.load(reader);
+			} catch (Exception e) {
+				throw new IOException(e);
+			} finally {
+				IOUtil.close(reader);
+			}
+		}
 
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		Map<String, String> props = new TreeMap(localizationProps);
