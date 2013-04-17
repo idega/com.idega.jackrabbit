@@ -74,6 +74,10 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 		long start = System.currentTimeMillis();
 		try {
 			path = davResource.getResourcePath();
+			int semiColonIndex = path.lastIndexOf(CoreConstants.SEMICOLON);
+			if (semiColonIndex > 0)
+				path = path.substring(0, semiColonIndex);
+
 			if (getRepository().getExistence(path)) {
 				writeResponse(webdavRequest.getSession(false), webdavResponse, davResource, 0);
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
