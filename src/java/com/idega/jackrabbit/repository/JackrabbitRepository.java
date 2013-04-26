@@ -288,8 +288,6 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 						} catch (Exception e) {
 							getLogger().log(Level.WARNING, "Error updating contents of " + parentPath + fileName, e);
 
-							//versionManager.merge(file.getPath(), session.getWorkspace().getName(), true);
-
 							if (doRestoreToTheLatestVersion(session, versionManager, file)) {
 								closeStream = false;
 								return uploadFile(parentPath, fileName, stream, mimeType, user, versionable, properties);
@@ -509,7 +507,6 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	private void setDefaultProperties(Node node, String nodeType) throws RepositoryException {
 		List<String> defaultMixins = Arrays.asList(
-				JcrConstants.MIX_VERSIONABLE,
 				JcrConstants.MIX_REFERENCEABLE
 		);
 		for (String mixin: defaultMixins) {

@@ -31,6 +31,7 @@ import javax.jcr.version.VersionException;
 import javax.jcr.version.VersionHistory;
 import javax.jcr.version.VersionIterator;
 
+import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.core.TransientRepository;
 import org.apache.jackrabbit.rmi.client.RemoteRepositoryException;
 import org.apache.jackrabbit.rmi.repository.RMIRemoteRepository;
@@ -303,7 +304,7 @@ public class RepositoryTest {
 
 		Node n = rn.addNode("versionedblog");
 
-		n.addMixin("mix:versionable");
+		n.addMixin(JcrConstants.MIX_VERSIONABLE);
 		n.setProperty("blogtitle",  new StringValue("Versioned rabbit") );
 		n.setProperty("blogauthor", new StringValue("Joe Blogger"));
 		n.setProperty("blogdate", new DateValue(Calendar.getInstance()));
