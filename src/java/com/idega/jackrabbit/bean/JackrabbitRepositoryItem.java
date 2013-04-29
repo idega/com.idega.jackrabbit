@@ -15,6 +15,7 @@ import javax.jcr.lock.Lock;
 import javax.jcr.version.Version;
 import javax.jcr.version.VersionManager;
 
+import com.idega.core.data.ICTreeNode;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.bean.RepositoryItem;
@@ -116,7 +117,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 				e.printStackTrace();
 			}
 		}
-		return exists;
+		return exists == null ? Boolean.FALSE : exists;
 	}
 
 	@Override
@@ -246,7 +247,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	}
 
 	@Override
-	public RepositoryItem getParenItem() {
+	public <T extends ICTreeNode> T getParenItem() {
 		try {
 			String parentPath = getRepositoryService().getParentPath(path);
 			getRepositoryService().getRepositoryItem(parentPath);
