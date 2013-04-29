@@ -1079,8 +1079,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		try {
 			session = getSessionBySuperAdmin();
 			return session.getNode(absolutePath) != null;
+		} catch (PathNotFoundException e) {
+			return false;
 		} catch (Exception e) {
 			if (tryEncoded) {
+				getLogger().warning("Failed to verify if node '" + absolutePath + "' exists, will try with encoded path");
 				try {
 					String parentPath = getParentPath(absolutePath);
 					String nodeName = getNodeName(absolutePath);
@@ -1092,7 +1095,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 					return false;
 				}
 			} else {
-				getLogger().warning("Unable to verify whether node " + absolutePath + " exists");
+				getLogger().warning("Unable to verify if node '" + absolutePath + "' exists");
 				return false;
 			}
 		} finally {
