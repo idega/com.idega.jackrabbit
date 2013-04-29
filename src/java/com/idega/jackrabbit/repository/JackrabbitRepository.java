@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -470,6 +471,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return getNode(parent, nodeName, true, type);
 	}
 	private Node getNode(Node parent, String nodeName, boolean createIfNotFound, String type) throws RepositoryException {
+		return getNode(parent, nodeName, createIfNotFound, type, true);
+	}
+	private Node getNode(Node parent, String nodeName, boolean createIfNotFound, String type, boolean reTry) throws RepositoryException {
 		if (nodeName.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
 			nodeName = nodeName.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
 		if (nodeName.startsWith(CoreConstants.SLASH))
@@ -480,7 +484,15 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		Node node = null;
 		try {
 			node = parent.getNode(nodeName);
-		} catch (PathNotFoundException e) {}
+		} catch (PathNotFoundException e) {
+		} catch (Exception e) {
+			if (reTry) {
+				try {
+					nodeName = URLEncoder.encode(nodeName, CoreConstants.ENCODING_UTF8);
+					return getNode(parent, nodeName, createIfNotFound, type, false);
+				} catch (UnsupportedEncodingException uee) {}
+			}
+		}
 
 		if (node == null && createIfNotFound) {
 			//	Will create a node
@@ -1045,10 +1057,14 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public boolean getExistence(String absolutePath) throws RepositoryException {
+		return getExistence(absolutePath, true);
+	}
+
+	private boolean getExistence(String absolutePath, boolean tryEncoded) throws RepositoryException {
 		if (!isValidPath(absolutePath))
 			return false;
 
-		absolutePath = getPath(absolutePath);
+		absolutePath = getPath(absolutePath, tryEncoded);
 
 		if (!absolutePath.startsWith(CoreConstants.PATH_FILES_ROOT)) {
 			int firstFilesAppearance = absolutePath.indexOf(CoreConstants.PATH_FILES_ROOT);
@@ -1063,8 +1079,22 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		try {
 			session = getSessionBySuperAdmin();
 			return session.getNode(absolutePath) != null;
-		} catch (PathNotFoundException e) {
-			return false;
+		} catch (Exception e) {
+			if (tryEncoded) {
+				try {
+					String parentPath = getParentPath(absolutePath);
+					String nodeName = getNodeName(absolutePath);
+					if (nodeName.startsWith(CoreConstants.SLASH))
+						nodeName = nodeName.substring(1);
+					nodeName = URLEncoder.encode(nodeName, CoreConstants.ENCODING_UTF8);
+					return getExistence(parentPath + CoreConstants.SLASH + nodeName, false);
+				} catch (UnsupportedEncodingException uee) {
+					return false;
+				}
+			} else {
+				getLogger().warning("Unable to verify whether node " + absolutePath + " exists");
+				return false;
+			}
 		} finally {
 			logout(session);
 		}
@@ -1370,13 +1400,17 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public String getPath(String path) {
+		return getPath(path, true);
+	}
+
+	private String getPath(String path, boolean decode) {
 		if (path == null)
 			return null;
 
 		String uriPrefix = getWebdavServerURL();
 		path = path.startsWith(uriPrefix) ? path.substring(uriPrefix.length()) : path;
 
-		if (path.indexOf(CoreConstants.PERCENT) != -1) {
+		if (decode && path.indexOf(CoreConstants.PERCENT) != -1) {
 			try {
 				path = URLDecoder.decode(path, CoreConstants.ENCODING_UTF8);
 			} catch (UnsupportedEncodingException e) {}
