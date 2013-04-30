@@ -609,6 +609,10 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			Node root = session.getRootNode();
 			Node file = getNode(root, path, false, null);
 			if (file == null) {
+				path = URLDecoder.decode(path, CoreConstants.ENCODING_UTF8);
+				file = getNode(root, path, false, null);
+			}
+			if (file == null) {
 				getLogger().warning("Resource does not exist: " + path);
 				return null;
 			}
@@ -1075,6 +1079,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		if (semicolon != -1)
 			absolutePath = absolutePath.substring(0, semicolon);
 
+		if (tryEncoded) {
+			try {
+				absolutePath = URLDecoder.decode(absolutePath, CoreConstants.ENCODING_UTF8);
+			} catch (UnsupportedEncodingException e) {}
+		}
+
 		Session session = null;
 		try {
 			session = getSessionBySuperAdmin();
@@ -1161,7 +1171,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 			for (NodeIterator iter = node.getNodes(); iter.hasNext();) {
 				Node childNode = iter.nextNode();
-				if (isIdegaNode(childNode))
+				if (childNode != null)
 					items.add(new JackrabbitRepositoryItem(childNode.getPath(), user));
 			}
 			return items;
@@ -1175,32 +1185,6 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return getChildNodes(securityHelper.getSuperAdmin(), path);
 	}
 
-	private boolean isIdegaNode(Node node) throws RepositoryException {
-		if (node == null)
-			return false;
-
-		//	TODO: implement
-		return true;
-//		Property property = null;
-//		try {
-//			property = node.getProperty(JcrConstants.JCR_PRIMARYITEMNAME);
-//		} catch (PathNotFoundException e) {
-//			return false;
-//		}
-//		if (property == null)
-//			return false;
-//
-//		Value value = property.getValue();
-//		if (value == null)
-//			return false;
-//
-//		String propValue = value.getString();
-//		if (StringUtil.isEmpty(propValue))
-//			return false;
-//
-//		return propValue.endsWith(JackrabbitConstants.IDEGA_NODE);
-	}
-
 	private boolean isCollection(String path) throws RepositoryException {
 		if (StringUtil.isEmpty(path))
 			return false;
@@ -1212,9 +1196,6 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 				return false;
 
 			session = node.getSession();
-
-			if (!isIdegaNode(node))
-				return false;
 
 			if (node.hasProperty(JcrConstants.NT_FOLDER))
 				return true;
