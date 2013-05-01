@@ -1422,18 +1422,6 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		} catch (RepositoryException e) {
 			getLogger().log(Level.WARNING, "Error registering event listeners " + eventListeners, e);
 		}
-//		try {
-//			session = getSessionBySuperAdmin();
-//			EventListenerIterator listeners = session.getWorkspace().getObservationManager().getRegisteredEventListeners();
-//			for (; listeners.hasNext();) {
-//				EventListener tmp = (EventListener) listeners.next();
-//				LOGGER.info("Listener: " + tmp);
-//			}
-//		} catch (RepositoryException e) {
-//			e.printStackTrace();
-//		} finally {
-//			logout(session);
-//		}
 	}
 
 	@Override
