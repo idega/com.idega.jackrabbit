@@ -84,7 +84,7 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 
 		try {
 			LoginSession loginSession = LoginBusinessBean.getLoginSessionBean();
-			if (loginSession.getUser().getId().intValue() != user.getId().intValue())
+			if (loginSession.getUserEntity().getId().intValue() != user.getId().intValue())
 				return Boolean.FALSE;
 
 			String loginName = LoginBusinessBean.getLoginSessionBean().getLoggedOnInfo().getLogin();

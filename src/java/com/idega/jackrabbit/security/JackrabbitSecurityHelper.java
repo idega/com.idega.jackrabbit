@@ -68,7 +68,7 @@ public class JackrabbitSecurityHelper extends DefaultSpringBean {
 
 		try {
 			LoginSession loginSession = ELUtil.getInstance().getBean(LoginSession.class);
-			return loginSession.getUser();
+			return loginSession.getUserEntity();
 		} catch (Exception e) {
 			getLogger().log(Level.WARNING, "Error getting current user from session " + session.getId(), e);
 		}

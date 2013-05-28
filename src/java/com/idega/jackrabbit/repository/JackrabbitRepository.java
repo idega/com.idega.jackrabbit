@@ -132,7 +132,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		try {
 			LoginSession loginSession = ELUtil.getInstance().getBean(LoginSession.class.getName());
 			if (loginSession != null)
-				return loginSession.getUser();
+				return loginSession.getUserEntity();
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error getting current user", e);
 		}
