@@ -36,6 +36,7 @@ import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
 import com.idega.util.FileUtil;
 import com.idega.util.ListUtil;
+import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
 import com.idega.util.expression.ELUtil;
 
@@ -94,8 +95,9 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 			throw new DavException(DavServletResponse.SC_INTERNAL_SERVER_ERROR, e);
 		} finally {
 			long duration = System.currentTimeMillis() - start;
-			if (duration >= 50) {
-				LOGGER.info("It took " + duration + " ms to serve " + path);
+			if (duration >= 50 && IWMainApplication.getDefaultIWMainApplication().getSettings().getBoolean("jcr.log_request_duration", false)) {
+				LOGGER.info("It took " + duration + " ms to serve " +
+						StringHandler.replace(path, RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT, CoreConstants.EMPTY));
 			}
 		}
 	}
@@ -145,8 +147,6 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 		}
 
 		if (isCollection(davResource, name) && canDisplay(name)) {
-			//	TODO: implement
-//			writer.write("<a href=\"".concat(davResource.getHref()).concat("\">").concat(name).concat("</a>\n"));
 		} else {
 			try {
 				String contentType = MimeTypeUtil.resolveMimeTypeFromFileName(path);
