@@ -83,7 +83,8 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 				writeResponse(webdavRequest.getSession(false), webdavResponse, davResource, 0);
 				webdavResponse.setStatus(DavServletResponse.SC_OK);
 			} else {
-				String message = "Resource '" + path + "' does not exist";
+				String message = "Resource '" + StringHandler.replace(path, RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT, CoreConstants.EMPTY) +
+						"' does not exist";
 				LOGGER.warning(message);
 				DavException davException = new DavException(DavServletResponse.SC_NOT_FOUND, message);
 				throw davException;
