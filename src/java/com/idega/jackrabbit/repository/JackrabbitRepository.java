@@ -1114,7 +1114,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public JackrabbitRepositoryItem getRepositoryItem(User user, String path) throws RepositoryException {
+	public RepositoryItem getRepositoryItem(User user, String path) throws RepositoryException {
 		if (StringUtil.isEmpty(path)) {
 			getLogger().warning("Path is not provided!");
 			return null;
@@ -1141,9 +1141,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public JackrabbitRepositoryItem getRepositoryItemAsRootUser(String path) throws RepositoryException {
+	public RepositoryItem getRepositoryItemAsRootUser(String path) throws RepositoryException {
 		return getRepositoryItem(securityHelper.getSuperAdmin(), path);
 	}
 
@@ -1342,14 +1341,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	@Override
-	public <T extends RepositoryItem> T getRepositoryItem(String path) throws RepositoryException {
+	public RepositoryItem getRepositoryItem(String path) throws RepositoryException {
 		Node node = getNode(path);
 		if (node == null)
 			return null;
 
-		@SuppressWarnings("unchecked")
-		T item = (T) new JackrabbitRepositoryItem(path, getUser());
-		return item;
+		return new JackrabbitRepositoryItem(path, getUser());
 	}
 
 	@Override

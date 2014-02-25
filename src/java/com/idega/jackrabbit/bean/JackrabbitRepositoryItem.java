@@ -15,7 +15,6 @@ import javax.jcr.lock.Lock;
 import javax.jcr.version.Version;
 import javax.jcr.version.VersionManager;
 
-import com.idega.core.data.ICTreeNode;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.bean.RepositoryItem;
@@ -247,7 +246,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	}
 
 	@Override
-	public <T extends ICTreeNode> T getParenItem() {
+	public JackrabbitRepositoryItem getParenItem() {
 		try {
 			String parentPath = getRepositoryService().getParentPath(path);
 			getRepositoryService().getRepositoryItem(parentPath);
