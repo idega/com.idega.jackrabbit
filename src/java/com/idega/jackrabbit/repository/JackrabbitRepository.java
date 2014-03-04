@@ -1278,18 +1278,18 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public String createUniqueFileName(String path, String scope) {
 		try {
-			List<RepositoryItem> siblings = getSiblingResources(path);
-			if (ListUtil.isEmpty(siblings))
-				return scope;
+//			List<RepositoryItem> siblings = getSiblingResources(path);
+//			if (ListUtil.isEmpty(siblings))
+//				return scope;
+//
+//			for (RepositoryItem sibling: siblings) {
+//				if (sibling.getPath().endsWith(scope)) {
+//					scope = scope.concat(CoreConstants.UNDER).concat(String.valueOf(System.nanoTime()));
+//					return createUniqueFileName(path, scope);
+//				}
+//			}
 
-			for (RepositoryItem sibling: siblings) {
-				if (sibling.getPath().endsWith(scope)) {
-					scope = scope.concat(CoreConstants.UNDER).concat(String.valueOf(System.nanoTime()));
-					return createUniqueFileName(path, scope);
-				}
-			}
-
-			return scope;
+			return scope.concat(CoreConstants.UNDER).concat(String.valueOf(System.nanoTime()));
 		} catch (Exception e) {
 			getLogger().log(Level.WARNING, "Error making unique scope for " + scope + " in " + path, e);
 		}
