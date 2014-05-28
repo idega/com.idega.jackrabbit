@@ -6,9 +6,7 @@
   	<version>5.0.0-SNAPSHOT</version>
   </parent>
   <name>idegaWeb Jackrabbit</name>
-  <groupId>com.idega.block.platform</groupId>
   <artifactId>com.idega.jackrabbit</artifactId>
-  <version>5.0.0-SNAPSHOT</version>
   <organization>
   	<name>Idega Software</name>
   	<url>www.idega.com</url>

@@ -37,7 +37,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	private URL url;
 
 	public JackrabbitRepositoryItem(String path, User user) {
-		super();
+		super(path);
 
 		this.path = path;
 		this.user = user;
@@ -76,7 +76,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	}
 
 	@Override
-	public boolean delete() throws IOException {
+	public boolean delete() {
 		try {
 			return getRepositoryService().delete(path, user);
 		} catch (RepositoryException e) {
@@ -267,11 +267,15 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	}
 
 	@Override
-	public boolean createNewFile() throws IOException, RepositoryException {
+	public boolean createNewFile() {
 		if (!exists()) {
 			try {
-				return getRepositoryService().uploadFile(getParentPath(), getName(), getMimeType(),
-						StringHandler.getStreamFromString(CoreConstants.EMPTY));
+				return getRepositoryService().uploadFile(
+						getParentPath(),
+						getName(),
+						getMimeType(),
+						StringHandler.getStreamFromString(CoreConstants.EMPTY)
+				);
 			} catch (Exception e) {
 				e.printStackTrace();
 				return false;

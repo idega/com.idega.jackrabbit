@@ -88,7 +88,7 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 		for (String principal: privileges.keySet()) {
 			final String principalName = principal;
 			//	TODO
-			AccessControlEntry entry = new JackrabbitAccessControlEntry(new Principal() {
+			AccessControlEntry entry = new com.idega.jackrabbit.repository.access.JackrabbitAccessControlEntry(new Principal() {
 				@Override
 				public String getName() {
 					return principalName;
@@ -205,6 +205,14 @@ public class JackrabbitAccessControlList implements org.apache.jackrabbit.api.se
 			this.aces = new ArrayList<AccessControlEntry>();
 
 		this.aces.addAll(Arrays.asList(aces));
+	}
+
+	@Override
+	public boolean addEntry(Principal principal, Privilege[] privileges, boolean arg2,
+			Map<String, Value> arg3, Map<String, Value[]> arg4)
+			throws AccessControlException, RepositoryException {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }
