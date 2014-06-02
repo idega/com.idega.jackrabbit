@@ -560,14 +560,28 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return getSession(admin);
 	}
 
+	private Credentials rootUserCredentials = null;
+	
+	private Credentials getCredentials(User user) {
+		LoginTable loginTable = LoginDBHandler.getUserLogin(user.getId());
+		return getCredentials(Integer.valueOf(user.getId()), loginTable.getUserPasswordInClearText());
+	}
+	
 	@Override
 	public Session getSession(User user) throws RepositoryException {
 		if (user == null) {
 			throw new RepositoryException("User can not be identified!");
 		}
 
-		LoginTable loginTable = LoginDBHandler.getUserLogin(user.getId());
-		Credentials credentials = getCredentials(Integer.valueOf(user.getId()), loginTable.getUserPasswordInClearText());
+		Credentials credentials = null;
+		if (user.getId().intValue() == securityHelper.getSuperAdmin().getId().intValue()) {
+			if (rootUserCredentials == null) {
+				rootUserCredentials = getCredentials(user);
+			}
+			credentials = rootUserCredentials;
+		} else {
+			credentials = getCredentials(user);
+		}
 
 		return repository.login(credentials);
 	}
