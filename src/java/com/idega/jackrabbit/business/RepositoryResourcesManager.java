@@ -41,7 +41,7 @@ public class RepositoryResourcesManager extends DefaultSpringBean implements App
 	@Autowired
 	private MessageResourceFactory messageResourceFactory;
 
-	public synchronized void storeState(Map<String, String> localizations, String localizableFilePath) {
+	public void storeState(Map<String, String> localizations, String localizableFilePath) {
 		Properties props = new SortedProperties();
 		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 

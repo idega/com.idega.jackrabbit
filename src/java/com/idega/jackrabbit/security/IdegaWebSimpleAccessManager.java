@@ -98,7 +98,7 @@ public class IdegaWebSimpleAccessManager implements AccessManager {
     }
 
     @Override
-	public synchronized void close() throws Exception {
+	public void close() throws Exception {
         if (!initialized) {
             throw new IllegalStateException("not initialized");
         }

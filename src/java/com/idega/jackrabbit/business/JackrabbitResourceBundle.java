@@ -129,7 +129,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	}
 
 	@Override
-	public synchronized void storeState() {
+	public void storeState() {
 		getRepositoryResourcesManager().storeState(getLookup(), getLocalizableFilePath());
 	}
 
