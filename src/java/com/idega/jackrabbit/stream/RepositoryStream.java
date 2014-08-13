@@ -62,8 +62,12 @@ public class RepositoryStream extends AutoCloseInputStream {
 		}
 
 		if (reTry) {
-			BuilderLogicWrapper builderLogic = ELUtil.getInstance().getBean(BuilderLogicWrapper.SPRING_BEAN_NAME_BUILDER_LOGIC_WRAPPER);
-			builderLogic.getBuilderService(IWMainApplication.getDefaultIWApplicationContext()).clearAllCaches();
+			IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
+			if (iwma.getSettings().getBoolean("jcr.clear_cache_on_read_error", Boolean.TRUE)) {
+				BuilderLogicWrapper builderLogic = ELUtil.getInstance().getBean(BuilderLogicWrapper.SPRING_BEAN_NAME_BUILDER_LOGIC_WRAPPER);
+				builderLogic.getBuilderService(IWMainApplication.getDefaultIWApplicationContext()).clearAllCaches();
+			}
+
 			return execute(false, method, params);
 		}
 
