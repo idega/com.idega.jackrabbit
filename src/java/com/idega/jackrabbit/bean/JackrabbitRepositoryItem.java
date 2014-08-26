@@ -16,6 +16,8 @@ import javax.jcr.version.Version;
 import javax.jcr.version.VersionManager;
 
 import com.idega.core.file.util.MimeTypeUtil;
+import com.idega.idegaweb.IWConstants;
+import com.idega.idegaweb.IWMainApplication;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.bean.RepositoryItem;
 import com.idega.repository.jcr.JCRItem;
@@ -128,7 +130,23 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	public URL getHttpURL() {
 		if (url == null) {
 			try {
-				url = new URL(path);
+				String fullURL = path;
+				if (!fullURL.startsWith(CoreConstants.WEBDAV_SERVLET_URI)) {
+					fullURL = CoreConstants.WEBDAV_SERVLET_URI.concat(fullURL);
+				}
+				if (!fullURL.startsWith("http")) {
+					String server = IWMainApplication.getDefaultIWMainApplication().getSettings().getProperty(IWConstants.SERVER_URL_PROPERTY_NAME);
+					if (server == null) {
+						getLogger().warning("Unknown server");
+					} else {
+						if (server.endsWith(CoreConstants.SLASH) && fullURL.startsWith(CoreConstants.SLASH)) {
+							fullURL = fullURL.substring(1);
+						}
+						fullURL = server.concat(fullURL);
+					}
+				}
+
+				url = new URL(fullURL);
 			} catch (MalformedURLException e) {
 				e.printStackTrace();
 			}
