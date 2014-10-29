@@ -4,6 +4,18 @@ xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
 xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
 http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
 
+	<!-- Content Filter -->
+	<filter>
+		<filter-name>IdegaWebJCRFilter</filter-name>
+		<filter-class>
+			com.idega.jackrabbit.webdav.IdegaWebdavServlet
+		</filter-class>
+	</filter>
+	<filter-mapping>
+		<filter-name>IdegaWebJCRFilter</filter-name>
+		<url-pattern>/content/*</url-pattern>
+	</filter-mapping>
+
     <!-- ====================================================================== -->
     <!-- W E B D A V  S E R V L E T                                             -->
     <!-- ====================================================================== -->
@@ -74,5 +86,5 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
         <servlet-name>content</servlet-name>
         <url-pattern>/content/*</url-pattern>
     </servlet-mapping>
-
+    
 </web-app>

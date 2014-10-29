@@ -8,7 +8,13 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.jcr.RepositoryException;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -45,7 +51,7 @@ import com.idega.util.expression.ELUtil;
  * @author valdas
  *
  */
-public class IdegaWebdavServlet extends JCRWebdavServerServlet {
+public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter {
 
 	private static final long serialVersionUID = -3270277844439956826L;
 	private static final Logger LOGGER = Logger.getLogger(IdegaWebdavServlet.class.getName());
@@ -71,57 +77,63 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 
 	@Override
 	protected void doGet(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
-		String path = null;
-		long start = System.currentTimeMillis();
 		try {
-			path = davResource.getResourcePath();
-			int semiColonIndex = path.lastIndexOf(CoreConstants.SEMICOLON);
-			if (semiColonIndex > 0)
-				path = path.substring(0, semiColonIndex);
-
-			if (getRepository().getExistence(path)) {
-				writeResponse(webdavRequest.getSession(false), webdavResponse, davResource, 0);
-				webdavResponse.setStatus(DavServletResponse.SC_OK);
-			} else {
-				String message = "Resource '" + StringHandler.replace(path, RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT, CoreConstants.EMPTY) +
-						"' does not exist";
-				LOGGER.warning(message);
-				DavException davException = new DavException(DavServletResponse.SC_NOT_FOUND, message);
-				throw davException;
-			}
+			doServeRequest(davResource.getResourcePath(), webdavRequest, webdavResponse);
 		} catch (DavException e) {
 			throw new DavException(e.getErrorCode(), e);
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error getting " + davResource.getHref(), e);
 			throw new DavException(DavServletResponse.SC_INTERNAL_SERVER_ERROR, e);
+		}
+	}
+
+	private void doServeRequest(String path, HttpServletRequest request, HttpServletResponse response) throws Exception {
+		long start = System.currentTimeMillis();
+		try {
+			int semiColonIndex = path.lastIndexOf(CoreConstants.SEMICOLON);
+			if (semiColonIndex > 0) {
+				path = path.substring(0, semiColonIndex);
+			}
+
+			if (getRepository().getExistence(path)) {
+				writeResponse(request.getSession(false), response, path);
+				response.setStatus(DavServletResponse.SC_OK);
+			} else {
+				String message = "Resource '" + StringHandler.replace(path, RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT, CoreConstants.EMPTY) + "' does not exist";
+				LOGGER.warning(message);
+				DavException davException = new DavException(DavServletResponse.SC_NOT_FOUND, message);
+				throw davException;
+			}
 		} finally {
 			long duration = System.currentTimeMillis() - start;
 			if (duration >= 50 && IWMainApplication.getDefaultIWMainApplication().getSettings().getBoolean("jcr.log_request_duration", false)) {
-				LOGGER.info("It took " + duration + " ms to serve " +
-						StringHandler.replace(path, RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT, CoreConstants.EMPTY));
+				LOGGER.info("It took " + duration + " ms to serve " + StringHandler.replace(path, RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT, CoreConstants.EMPTY));
 			}
 		}
 	}
 
-	private void writeResponse(HttpSession session, WebdavResponse webdavResponse, DavResource davResource, int level) throws IOException, DavException {
-		String name = davResource.getDisplayName();
-		String path = davResource.getResourcePath();
+	private void writeResponse(HttpSession session, HttpServletResponse response, String path) throws IOException, DavException {
 		String prefix = RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT;
-		if (path.startsWith(prefix))
+		if (path.startsWith(prefix)) {
 			path = path.replaceFirst(prefix, CoreConstants.EMPTY);
+		}
 		int semicolon = path.indexOf(CoreConstants.SEMICOLON);
-		if (semicolon != -1)
+		if (semicolon != -1) {
 			path = path.substring(0, semicolon);
+		}
 
-		boolean allowAll = path.startsWith(CoreConstants.PUBLIC_PATH) || path.startsWith(CoreConstants.CONTENT_PATH + "/themes/");
+		String themes = CoreConstants.CONTENT_PATH + "/themes/";
+		boolean allowAll = path.startsWith(CoreConstants.PUBLIC_PATH) || path.startsWith(themes) || path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes));
+
 		if (!allowAll) {
 			IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
 			AccessController accessController = iwma.getAccessController();
 
 			//	Need to resolve access rights
 			User user = getSecurityHelper().getCurrentUser(session);
-			if (user == null)
+			if (user == null) {
 				throw new DavException(DavServletResponse.SC_FORBIDDEN, "User is not logged in, resource " + path + " is not accessible");
+			}
 
 			if (!getSecurityHelper().isSuperAdmin(user)) {
 				if (iwma.getSettings().getBoolean("jackrabbit_dav_check_permissions", Boolean.FALSE)) {
@@ -147,14 +159,30 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 			}
 		}
 
-		if (isCollection(davResource, name) && canDisplay(name)) {
+		boolean folder = false;
+		try {
+			folder = getRepository().isFolder(path);
+		} catch (RepositoryException e) {}
+
+		String name = null;
+		try {
+			if (path.indexOf(CoreConstants.SLASH) != -1) {
+				name = path.substring(path.lastIndexOf(CoreConstants.SLASH) + 1);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (folder && canDisplay(name)) {
+			LOGGER.warning("Request to " + path + " can not be served: it's either folder or can't display this resource");
 		} else {
 			try {
 				String contentType = MimeTypeUtil.resolveMimeTypeFromFileName(path);
-				if (!StringUtil.isEmpty(contentType))
-					webdavResponse.setContentType(contentType);
+				if (!StringUtil.isEmpty(contentType)) {
+					response.setContentType(contentType);
+				}
 
-				OutputStream output = webdavResponse.getOutputStream();
+				OutputStream output = response.getOutputStream();
 				FileUtil.streamToOutputStream(getRepository().getInputStreamAsRoot(path), output);
 			} catch (Exception e) {
 				LOGGER.log(Level.WARNING, "Error getting content of " + path, e);
@@ -166,13 +194,8 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 		return displayName != null && displayName.indexOf(CoreConstants.SLASH) == -1 && displayName.indexOf(CoreConstants.COLON) == -1;
 	}
 
-	private boolean isCollection(DavResource resource, String displayName) {
-		return resource.isCollection() && displayName.indexOf(CoreConstants.DOT) == -1;
-	}
-
 	@Override
 	protected void doPost(WebdavRequest webdavRequest, WebdavResponse webdavResponse, DavResource davResource) throws IOException, DavException {
-		LOGGER.info("Using default implementation of doPost method");
 		super.doPost(webdavRequest, webdavResponse, davResource);
 	}
 
@@ -180,8 +203,9 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 
 	@Override
 	public DavLocatorFactory getLocatorFactory() {
-		if (locatorFactory == null)
+		if (locatorFactory == null) {
 			locatorFactory = new IdegaDAVLocatorFactory(CoreConstants.WEBDAV_SERVLET_URI);
+		}
 		return locatorFactory;
 	}
 
@@ -194,5 +218,24 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet {
 	@Override
 	protected void doAcl(WebdavRequest request, WebdavResponse response, DavResource resource) throws DavException, IOException {
 		super.doAcl(request, response, resource);
+	}
+
+	@Override
+	public void init(FilterConfig filterConfig) throws ServletException {}
+
+	@Override
+	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+		String path = null;
+		try {
+			HttpServletRequest httpRequest = (HttpServletRequest) request;
+			HttpServletResponse httpResponse = (HttpServletResponse) response;
+			path = httpRequest.getRequestURI();
+			doServeRequest(path, httpRequest, httpResponse);
+			return;
+		} catch (Exception e) {
+			LOGGER.log(Level.WARNING, "Error while serving request: " + path, e);
+		}
+
+		chain.doFilter(request, response);
 	}
 }
