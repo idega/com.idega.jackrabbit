@@ -123,7 +123,8 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 		}
 
 		String themes = CoreConstants.CONTENT_PATH + "/themes/";
-		boolean allowAll = path.startsWith(CoreConstants.PUBLIC_PATH) || path.startsWith(themes) || path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes));
+		boolean allowAll =	path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(CoreConstants.PUBLIC_PATH)) || path.startsWith(CoreConstants.PUBLIC_PATH) ||
+							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes)) || path.startsWith(themes);
 
 		if (!allowAll) {
 			IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
