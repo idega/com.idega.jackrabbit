@@ -8,13 +8,16 @@ import java.io.ObjectOutputStream;
 import java.io.Reader;
 import java.io.Serializable;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,9 +33,11 @@ import com.idega.idegaweb.IWResourceBundle;
 import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.event.RepositoryResourceLocalizer;
+import com.idega.util.ArrayUtil;
 import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
 import com.idega.util.IOUtil;
+import com.idega.util.ListUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
 import com.idega.util.datastructures.map.MapUtil;
@@ -254,7 +259,46 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 
 	@Override
 	public Set<String> getAllLocalizedKeys() {
-		return getLookup().keySet();
+		Map<String, String> data = getLookup();
+
+		Set<String> loadedKeys = getLookup().keySet();
+
+		String path = LOCALIZATION_PATH + getBundleIdentifier() + "/Localizable_" + getLocale().toString() + ".strings";
+		try {
+			if (getRepositoryService().getExistence(path)) {
+				String content = StringHandler.getContentFromInputStream(getRepositoryService().getInputStreamAsRoot(path));
+				List<String> lines = StringUtil.getLinesFromString(content);
+				if (!ListUtil.isEmpty(lines)) {
+					List<String> newKeys = new ArrayList<String>();
+					for (String line: lines) {
+						if (StringUtil.isEmpty(line)) {
+							continue;
+						}
+
+						String[] parts = line.split(CoreConstants.EQ);
+						if (ArrayUtil.isEmpty(parts) || parts.length != 2) {
+							continue;
+						}
+
+						String key = parts[0];
+						if (!data.containsKey(key)) {
+							String value = parts[1];
+							setString(key, value);
+							newKeys.add(key);
+						}
+					}
+					if (!ListUtil.isEmpty(newKeys)) {
+						LOGGER.info("Found missing keys: " + newKeys + " in " + path);
+						loadedKeys = new TreeSet<String>(loadedKeys);
+						loadedKeys.addAll(newKeys);
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return loadedKeys;
 	}
 
 	@Override
