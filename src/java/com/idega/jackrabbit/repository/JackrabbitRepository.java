@@ -71,6 +71,7 @@ import com.idega.jackrabbit.bean.JackrabbitRepositoryItem;
 import com.idega.jackrabbit.repository.access.JackrabbitAccessControlList;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.jackrabbit.stream.RepositoryStream;
+import com.idega.jackrabbit.util.RepositoryUtil;
 import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
@@ -1197,6 +1198,18 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public Collection<RepositoryItem> getChildNodesAsRootUser(String path) throws RepositoryException {
 		return getChildNodes(securityHelper.getSuperAdmin(), path);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.repository.RepositoryService#getChildNodesAsRootUserRecursively(java.lang.String)
+	 */
+	@Override
+	public Collection<String> getChildNodesAsRootUserRecursively(String path) throws RepositoryException {
+		Node node = getNode(path, false, securityHelper.getSuperAdmin(), false);
+		List<String> result = RepositoryUtil.getChildPathRecursively(node);
+		logout(node.getSession());
+		return result;
 	}
 
 	private boolean isCollection(String path) throws RepositoryException {
