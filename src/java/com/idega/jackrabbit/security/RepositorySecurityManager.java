@@ -1,7 +1,5 @@
 package com.idega.jackrabbit.security;
 
-import java.util.logging.Logger;
-
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
@@ -48,7 +46,6 @@ public class RepositorySecurityManager extends DefaultSecurityManager {
 	@Override
 	public void init(Repository repository, Session systemSession) throws RepositoryException {
 		adminId = getSecurityHelper().getSuperAdminId();
-		Logger.getLogger(getClass().getName()).info("Admin ID: " + adminId);
 		super.init(repository, systemSession);
 	}
 }
