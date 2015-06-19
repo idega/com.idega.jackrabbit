@@ -78,13 +78,14 @@ public class RepositoryResourcesManager extends DefaultSpringBean implements App
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
-		if (event instanceof RepositoryStartedEvent)
+		if (event instanceof RepositoryStartedEvent) {
 			doLoadResources();
-		else if (event instanceof RepositoryResourceLocalizer) {
+		} else if (event instanceof RepositoryResourceLocalizer) {
 			RepositoryResourceLocalizer localizer = (RepositoryResourceLocalizer) event;
 			Map<String, Map<String, String>> localizations = localizer.getLocalizations();
-			for (String path: localizations.keySet())
+			for (String path: localizations.keySet()) {
 				storeState(localizations.get(path), path);
+			}
 		}
 	}
 

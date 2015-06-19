@@ -214,8 +214,9 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	@Override
 	public String setMessage(String key, String value) {
 		String currentValue = getLookup().get(key);
-		if (!StringUtil.isEmpty(currentValue) && currentValue.equals(value))
+		if (!StringUtil.isEmpty(currentValue) && currentValue.equals(value)) {
 			return value;
+		}
 
 		getLookup().put(key, value);
 
