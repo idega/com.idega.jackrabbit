@@ -21,8 +21,11 @@ import org.apache.jackrabbit.core.security.authentication.DefaultLoginModule;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.idega.core.accesscontrol.business.LoginDBHandler;
+import com.idega.core.accesscontrol.business.StandardRoles;
 import com.idega.core.accesscontrol.data.LoginTable;
 import com.idega.jackrabbit.JackrabbitConstants;
+import com.idega.presentation.IWContext;
+import com.idega.util.CoreUtil;
 import com.idega.util.StringUtil;
 import com.idega.util.expression.ELUtil;
 
@@ -115,6 +118,17 @@ public class RepositoryLoginModule extends DefaultLoginModule {
 
 		if (credentials instanceof SimpleCredentials) {
 			credentials = new SimpleCredentials(userId, ((SimpleCredentials) credentials).getPassword());
+		}
+
+		try {
+			IWContext iwc = CoreUtil.getIWContext();
+			if (iwc != null && iwc.isLoggedOn()) {
+				if (iwc.hasRole(StandardRoles.ROLE_KEY_ADMIN) || iwc.hasRole(StandardRoles.ROLE_KEY_EDITOR) || iwc.hasRole(StandardRoles.ROLE_KEY_AUTHOR)) {
+					return true;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
 		return super.authenticate(principal, credentials);
