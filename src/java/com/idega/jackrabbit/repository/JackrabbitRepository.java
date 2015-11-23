@@ -563,11 +563,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	private Credentials rootUserCredentials = null;
 
-	private Credentials getCredentials(User user) {
+	private Credentials getCredentials(User user) throws RepositoryException {
 		LoginTable loginTable = LoginDBHandler.getUserLogin(user.getId());
 		if (loginTable == null) {
-			getLogger().warning("There is no login table for user " + user + (user == null ? CoreConstants.EMPTY : ", ID: " + user.getId()));
+			throw new RepositoryException("There is no login table for user " + user + (user == null ? CoreConstants.EMPTY : ", ID: " + user.getId()));
 		}
+
 		return getCredentials(Integer.valueOf(user.getId()), loginTable.getUserPasswordInClearText());
 	}
 
