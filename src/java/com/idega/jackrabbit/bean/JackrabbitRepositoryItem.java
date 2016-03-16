@@ -18,11 +18,13 @@ import javax.jcr.version.VersionManager;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWConstants;
 import com.idega.idegaweb.IWMainApplication;
+import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.bean.RepositoryItem;
 import com.idega.repository.jcr.JCRItem;
 import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
+import com.idega.util.CoreUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
 import com.idega.util.expression.ELUtil;
@@ -135,7 +137,9 @@ public class JackrabbitRepositoryItem extends JCRItem {
 					fullURL = CoreConstants.WEBDAV_SERVLET_URI.concat(fullURL);
 				}
 				if (!fullURL.startsWith("http")) {
-					String server = IWMainApplication.getDefaultIWMainApplication().getSettings().getProperty(IWConstants.SERVER_URL_PROPERTY_NAME);
+					IWContext iwc = CoreUtil.getIWContext();
+					String server = iwc == null ? IWMainApplication.getDefaultIWMainApplication().getSettings().getProperty(IWConstants.SERVER_URL_PROPERTY_NAME) :
+									iwc.getServerURL();
 					if (server == null) {
 						getLogger().warning("Unknown server");
 					} else {
