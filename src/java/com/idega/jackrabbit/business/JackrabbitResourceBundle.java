@@ -2,13 +2,9 @@ package com.idega.jackrabbit.business;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectInputStream.GetField;
-import java.io.ObjectOutputStream;
 import java.io.Reader;
 import java.io.Serializable;
 import java.io.StringReader;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -67,8 +63,10 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	private RepositoryResourcesManager resourcesManager;
 
 	private RepositoryResourcesManager getRepositoryResourcesManager() {
-		if (resourcesManager == null)
+		if (resourcesManager == null) {
 			ELUtil.getInstance().autowire(this);
+		}
+
 		return resourcesManager;
 	}
 
@@ -262,29 +260,6 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	public void removeMessage(String key) {
 		getLookup().remove(key);
 		storeState();
-	}
-
-	private void writeObject(ObjectOutputStream out) throws IOException {
-		out.writeBoolean(isAutoInsert());
-		out.writeObject(getBundleIdentifier());
-		out.writeObject(getLocale());
-		out.writeObject(getLookup());
-		out.writeObject(getLevel());
-		return;
-	}
-
-	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-		try {
-			GetField fields = in.readFields();
-			fields.get("autoInsert", Boolean.TRUE);
-			fields.get("bundleIdentifier", MessageResource.NO_BUNDLE);
-			fields.get("locale", Locale.ENGLISH);
-			fields.get("lookup", Collections.emptyMap());
-			fields.get("usagePriorityLevel", MessageResourceImportanceLevel.FIRST_ORDER);
-		} catch (IllegalArgumentException e) {
-		} catch (Exception e) {
-			LOGGER.log(Level.WARNING, "Error reading objects from the stream: " + in, e);
-		}
 	}
 
 	@Override
