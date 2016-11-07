@@ -21,10 +21,12 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
+import com.idega.builder.bean.AdvancedProperty;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWResourceBundle;
 import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryService;
+import com.idega.repository.bean.RepositoryItem;
 import com.idega.repository.event.RepositoryResourceLocalizer;
 import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
@@ -82,31 +84,52 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	}
 
 	@Override
-	public void initialize(String bundleIdentifier, Locale locale) throws IOException {
-		setLocale(locale);
-		setBundleIdentifier(bundleIdentifier);
+	protected Map<String, String> getLookup() {
+		if (MapUtil.isEmpty(super.getLookup())) {
+			IWContext iwc = CoreUtil.getIWContext();
+			if (iwc != null && iwc.isLoggedOn()) {
+				Properties localizationProps = new Properties();
 
-		InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
+				InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
 
-		Reader reader = null;
-		Properties localizationProps = new Properties();
-		if (sourceStream != null) {
-			try {
-				String content = StringHandler.getContentFromInputStream(sourceStream);
-				reader = new StringReader(content);
-				localizationProps.load(reader);
-			} catch (Exception e) {
-				throw new IOException(e);
-			} finally {
-				IOUtil.close(reader);
+				String content = null;
+				try {
+					content = StringHandler.getContentFromInputStream(sourceStream);
+				} catch (Exception e) {
+					Logger.getLogger(getClass().getName()).log(Level.WARNING, 
+							"Failed to read content from " + getLocalizableFilePath() + " cause of: ", e);
+				}
+
+				if (!StringUtil.isEmpty(content)) {
+					Reader reader = new StringReader(content);
+
+					try {
+						localizationProps.load(reader);
+					} catch (IOException e) {
+						Logger.getLogger(getClass().getName()).log(Level.WARNING, 
+								"Failed to load properties from reader, cause of:", e);
+					}
+
+					IOUtil.close(reader);
+				}
+
+				@SuppressWarnings({ "unchecked", "rawtypes" })
+				Map<String, String> props = new TreeMap(localizationProps);
+				setLookup(props);
+
+				IOUtil.closeInputStream(sourceStream);
+			} else {
+				setLookup(new TreeMap<>());
 			}
 		}
 
-		@SuppressWarnings({ "unchecked", "rawtypes" })
-		Map<String, String> props = new TreeMap(localizationProps);
-		setLookup(props);
+		return super.getLookup();
+	}
 
-		IOUtil.closeInputStream(sourceStream);
+	@Override
+	public void initialize(String bundleIdentifier, Locale locale) throws IOException {
+		setLocale(locale);
+		setBundleIdentifier(bundleIdentifier);
 	}
 
 	protected InputStream getResourceInputStream(String resourcePath) {
@@ -116,8 +139,27 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	private InputStream getResourceInputStream(String resourcePath, boolean createIfNotFound) {
 		try {
 			RepositoryService repository = getRepositoryService();
-			if (createIfNotFound && !repository.getExistence(resourcePath))
+			if (repository.getExistence(resourcePath)) {
+				RepositoryItem localFile = repository.getRepositoryItem(resourcePath);
+				if (localFile.length() == 0) {
+					repository.deleteAsRootUser(resourcePath);
+				}
+			}
+			
+			if (createIfNotFound && !repository.getExistence(resourcePath)) {
+				InputStream fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), getArchivePath());
+				if (fileToCopy == null || fileToCopy.available() == 0) {
+					fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), "resources/Localizable.strings");
+				}
+
+				if (fileToCopy != null && fileToCopy.available() > 0) {
+					repository.updateFileContents(resourcePath, fileToCopy, createIfNotFound, (AdvancedProperty) null);
+				}
+			}
+
+			if (createIfNotFound && !repository.getExistence(resourcePath)) {
 				createEmptyFile(resourcePath);
+			}
 
 			return repository.getInputStreamAsRoot(resourcePath);
 		} catch (Exception e) {
@@ -153,6 +195,10 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	@Override
 	protected boolean checkBundleLocalizedString(String key, String value) {
 		return !StringUtil.isEmpty((String) handleGetObject(key));
+	}
+
+	private String getArchivePath() {
+		return "resources/" + getLocale() + ".locale/Localized.strings";
 	}
 
 	private String getLocalizableFilePath() {
