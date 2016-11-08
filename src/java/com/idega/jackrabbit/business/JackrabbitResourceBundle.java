@@ -153,7 +153,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 				}
 
 				if (fileToCopy != null && fileToCopy.available() > 0) {
-					repository.updateFileContents(resourcePath, fileToCopy, createIfNotFound, (AdvancedProperty) null);
+					repository.updateFileContentsAsRoot(resourcePath, fileToCopy, createIfNotFound, (AdvancedProperty) null);
 				}
 			}
 
