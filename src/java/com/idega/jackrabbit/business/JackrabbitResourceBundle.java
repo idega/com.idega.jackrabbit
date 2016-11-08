@@ -96,7 +96,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 				try {
 					content = StringHandler.getContentFromInputStream(sourceStream);
 				} catch (Exception e) {
-					Logger.getLogger(getClass().getName()).log(Level.WARNING, 
+					Logger.getLogger(getClass().getName()).log(Level.WARNING,
 							"Failed to read content from " + getLocalizableFilePath() + " cause of: ", e);
 				}
 
@@ -106,7 +106,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 					try {
 						localizationProps.load(reader);
 					} catch (IOException e) {
-						Logger.getLogger(getClass().getName()).log(Level.WARNING, 
+						Logger.getLogger(getClass().getName()).log(Level.WARNING,
 								"Failed to load properties from reader, cause of:", e);
 					}
 
@@ -140,12 +140,12 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		try {
 			RepositoryService repository = getRepositoryService();
 			if (repository.getExistence(resourcePath)) {
-				RepositoryItem localFile = repository.getRepositoryItem(resourcePath);
-				if (localFile.length() == 0) {
+				RepositoryItem localFile = repository.getRepositoryItemAsRootUser(resourcePath);
+				if (localFile != null && localFile.length() == 0) {
 					repository.deleteAsRootUser(resourcePath);
 				}
 			}
-			
+
 			if (createIfNotFound && !repository.getExistence(resourcePath)) {
 				InputStream fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), getArchivePath());
 				if (fileToCopy == null || fileToCopy.available() == 0) {
