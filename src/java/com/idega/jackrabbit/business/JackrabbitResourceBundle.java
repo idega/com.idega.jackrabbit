@@ -137,22 +137,26 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	}
 
 	private InputStream getResourceInputStream(String resourcePath, boolean createIfNotFound) {
+		InputStream fileToCopy = null;
 		try {
 			RepositoryService repository = getRepositoryService();
 			if (repository.getExistence(resourcePath)) {
 				RepositoryItem localFile = repository.getRepositoryItemAsRootUser(resourcePath);
-				if (localFile != null && localFile.length() == 0) {
+				if (localFile != null && localFile.getLength() == 0) {
 					repository.deleteAsRootUser(resourcePath);
 				}
 			}
 
 			if (createIfNotFound && !repository.getExistence(resourcePath)) {
-				InputStream fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), getArchivePath());
-				if (fileToCopy == null || fileToCopy.available() == 0) {
+				fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), getArchivePath());
+				boolean empty = fileToCopy == null ? true : StringUtil.isEmpty(StringHandler.getContentFromInputStream(fileToCopy)) ? true : false;
+				if (empty) {
 					fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), "resources/Localizable.strings");
+				} else {
+					fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), getArchivePath());
 				}
 
-				if (fileToCopy != null && fileToCopy.available() > 0) {
+				if (fileToCopy != null) {
 					repository.updateFileContentsAsRoot(resourcePath, fileToCopy, createIfNotFound, (AdvancedProperty) null);
 				}
 			}
@@ -164,6 +168,8 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 			return repository.getInputStreamAsRoot(resourcePath);
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error getting InputStream for: " + resourcePath, e);
+		} finally {
+			IOUtil.close(fileToCopy);
 		}
 		return null;
 	}
