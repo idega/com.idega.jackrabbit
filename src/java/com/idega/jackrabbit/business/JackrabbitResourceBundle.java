@@ -94,8 +94,9 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 			try {
 				content = StringHandler.getContentFromInputStream(sourceStream);
 			} catch (Exception e) {
-				Logger.getLogger(getClass().getName()).log(Level.WARNING,
-						"Failed to read content from " + getLocalizableFilePath() + " cause of: ", e);
+				LOGGER.log(Level.WARNING, "Failed to read content from " + getLocalizableFilePath() + " cause of: ", e);
+			} finally {
+				IOUtil.closeInputStream(sourceStream);
 			}
 
 			if (!StringUtil.isEmpty(content)) {
@@ -104,18 +105,15 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 				try {
 					localizationProps.load(reader);
 				} catch (IOException e) {
-					Logger.getLogger(getClass().getName()).log(Level.WARNING,
-							"Failed to load properties from reader, cause of:", e);
+					LOGGER.log(Level.WARNING, "Failed to load properties from " + getLocalizableFilePath() + ", cause of: ", e);
+				} finally {
+					IOUtil.close(reader);
 				}
-
-				IOUtil.close(reader);
 			}
 
 			@SuppressWarnings({ "unchecked", "rawtypes" })
 			Map<String, String> props = new TreeMap(localizationProps);
 			setLookup(props);
-
-			IOUtil.closeInputStream(sourceStream);
 		}
 
 		return super.getLookup();
@@ -145,7 +143,9 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 
 			if (createIfNotFound && !repository.getExistence(resourcePath)) {
 				fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), getArchivePath());
-				boolean empty = fileToCopy == null ? true : StringUtil.isEmpty(StringHandler.getContentFromInputStream(fileToCopy)) ? true : false;
+				boolean empty = fileToCopy == null ?
+						true :
+						StringUtil.isEmpty(StringHandler.getContentFromInputStream(fileToCopy));
 				if (empty) {
 					fileToCopy = IOUtil.getStreamFromJar(getBundleIdentifier(), "resources/Localizable.strings");
 				} else {

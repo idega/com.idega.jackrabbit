@@ -90,10 +90,6 @@ public class RepositoryResourcesManager extends DefaultSpringBean implements App
 	}
 
 	private void doLoadResources() {
-		if (getSettings().getBoolean("skip_loading_localizations_from_repo", true)) {
-			return;
-		}
-
 		Map<String, IWBundle> bundles = getApplication().getLoadedBundles();
 		if (MapUtil.isEmpty(bundles)) {
 			getLogger().warning("No bundles are loaded");
