@@ -86,41 +86,36 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	@Override
 	protected Map<String, String> getLookup() {
 		if (MapUtil.isEmpty(super.getLookup())) {
-			IWContext iwc = CoreUtil.getIWContext();
-			if (iwc != null && iwc.isLoggedOn()) {
-				Properties localizationProps = new Properties();
+			Properties localizationProps = new Properties();
 
-				InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
+			InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
 
-				String content = null;
-				try {
-					content = StringHandler.getContentFromInputStream(sourceStream);
-				} catch (Exception e) {
-					Logger.getLogger(getClass().getName()).log(Level.WARNING,
-							"Failed to read content from " + getLocalizableFilePath() + " cause of: ", e);
-				}
-
-				if (!StringUtil.isEmpty(content)) {
-					Reader reader = new StringReader(content);
-
-					try {
-						localizationProps.load(reader);
-					} catch (IOException e) {
-						Logger.getLogger(getClass().getName()).log(Level.WARNING,
-								"Failed to load properties from reader, cause of:", e);
-					}
-
-					IOUtil.close(reader);
-				}
-
-				@SuppressWarnings({ "unchecked", "rawtypes" })
-				Map<String, String> props = new TreeMap(localizationProps);
-				setLookup(props);
-
-				IOUtil.closeInputStream(sourceStream);
-			} else {
-				setLookup(new TreeMap<>());
+			String content = null;
+			try {
+				content = StringHandler.getContentFromInputStream(sourceStream);
+			} catch (Exception e) {
+				Logger.getLogger(getClass().getName()).log(Level.WARNING,
+						"Failed to read content from " + getLocalizableFilePath() + " cause of: ", e);
 			}
+
+			if (!StringUtil.isEmpty(content)) {
+				Reader reader = new StringReader(content);
+
+				try {
+					localizationProps.load(reader);
+				} catch (IOException e) {
+					Logger.getLogger(getClass().getName()).log(Level.WARNING,
+							"Failed to load properties from reader, cause of:", e);
+				}
+
+				IOUtil.close(reader);
+			}
+
+			@SuppressWarnings({ "unchecked", "rawtypes" })
+			Map<String, String> props = new TreeMap(localizationProps);
+			setLookup(props);
+
+			IOUtil.closeInputStream(sourceStream);
 		}
 
 		return super.getLookup();
@@ -130,6 +125,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	public void initialize(String bundleIdentifier, Locale locale) throws IOException {
 		setLocale(locale);
 		setBundleIdentifier(bundleIdentifier);
+		getLookup();
 	}
 
 	protected InputStream getResourceInputStream(String resourcePath) {
