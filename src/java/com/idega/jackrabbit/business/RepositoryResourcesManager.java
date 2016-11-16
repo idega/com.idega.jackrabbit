@@ -135,8 +135,11 @@ public class RepositoryResourcesManager extends DefaultSpringBean implements App
 				}
 
 				//	Making sure we are not going to over write existing localizations
-				if (!ListUtil.isEmpty(repositoryResourceKeys))
-					localizationsFromOtherResources.keySet().removeAll(repositoryResourceKeys);
+				if (!ListUtil.isEmpty(repositoryResourceKeys)) {
+					for (String key : repositoryResourceKeys) {
+						localizationsFromOtherResources.remove(key);
+					}
+				}
 
 				if (!MapUtil.isEmpty(localizationsFromOtherResources))
 					repositoryBundle.setMessages(localizationsFromOtherResources);
