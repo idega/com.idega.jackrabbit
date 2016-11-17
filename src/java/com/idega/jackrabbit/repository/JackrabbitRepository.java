@@ -1081,10 +1081,15 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public boolean getExistence(String absolutePath) throws RepositoryException {
-		return getExistence(absolutePath, true);
+		return getExistence(absolutePath, true, false);
 	}
 
-	private boolean getExistence(String absolutePath, boolean tryEncoded) throws RepositoryException {
+	@Override
+	public boolean exists(String absolutePath) throws RepositoryException {
+		return getExistence(absolutePath, true, true);
+	}
+
+	private boolean getExistence(String absolutePath, boolean tryEncoded, boolean throwException) throws RepositoryException {
 		if (!isValidPath(absolutePath))
 			return false;
 
@@ -1120,13 +1125,18 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 					if (nodeName.startsWith(CoreConstants.SLASH))
 						nodeName = nodeName.substring(1);
 					nodeName = URLEncoder.encode(nodeName, CoreConstants.ENCODING_UTF8);
-					return getExistence(parentPath + CoreConstants.SLASH + nodeName, false);
+					return getExistence(parentPath + CoreConstants.SLASH + nodeName, false, throwException);
 				} catch (UnsupportedEncodingException uee) {
 					return false;
 				}
 			} else {
-				getLogger().warning("Unable to verify if node '" + absolutePath + "' exists");
-				return false;
+				String message = "Unable to verify if node '" + absolutePath + "' exists";
+				if (throwException) {
+					throw new RepositoryException(message);
+				} else {
+					getLogger().warning(message);
+					return false;
+				}
 			}
 		} finally {
 			logout(session);
