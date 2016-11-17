@@ -212,7 +212,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		while (!checkedWithoutError) {
 			path = getLocalizableFolderPath() + getLocalizableFileName(version == null ? null : String.valueOf(version));
 			try {
-				getRepositoryService().getExistence(path);
+				getRepositoryService().exists(path);
 				checkedWithoutError = true;
 				return path;
 			} catch (Exception e) {
