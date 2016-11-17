@@ -88,13 +88,14 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		if (MapUtil.isEmpty(super.getLookup())) {
 			Properties localizationProps = new Properties();
 
-			InputStream sourceStream = getResourceInputStream(getLocalizableFilePath());
+			String path = getLocalizableFilePath();
+			InputStream sourceStream = getResourceInputStream(path);
 
 			String content = null;
 			try {
 				content = StringHandler.getContentFromInputStream(sourceStream);
 			} catch (Exception e) {
-				LOGGER.log(Level.WARNING, "Failed to read content from " + getLocalizableFilePath() + " cause of: ", e);
+				LOGGER.log(Level.WARNING, "Failed to read content from " + path + " cause of: ", e);
 			} finally {
 				IOUtil.closeInputStream(sourceStream);
 			}
@@ -105,7 +106,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 				try {
 					localizationProps.load(reader);
 				} catch (IOException e) {
-					LOGGER.log(Level.WARNING, "Failed to load properties from " + getLocalizableFilePath() + ", cause of: ", e);
+					LOGGER.log(Level.WARNING, "Failed to load properties from " + path + ", cause of: ", e);
 				} finally {
 					IOUtil.close(reader);
 				}
@@ -204,30 +205,49 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	}
 
 	private String getLocalizableFilePath() {
-		return getLocalizableFolderPath() + getLocalizableFileName();
+		String path = null;
+
+		Integer version = null;
+		boolean checkedWithoutError = false;
+		while (!checkedWithoutError) {
+			path = getLocalizableFolderPath() + getLocalizableFileName(version == null ? null : String.valueOf(version));
+			try {
+				getRepositoryService().getExistence(path);
+				checkedWithoutError = true;
+				return path;
+			} catch (Exception e) {
+				checkedWithoutError = false;
+				version = version == null ? 1 : version + 1;
+			}
+		}
+
+		return path;
 	}
 
 	private String getLocalizableFolderPath() {
 		StringBuffer filePath = new StringBuffer(LOCALIZATION_PATH);
 
-		if (!StringUtil.isEmpty(getBundleIdentifier()) && !MessageResource.NO_BUNDLE.equals(getBundleIdentifier()))
+		if (!StringUtil.isEmpty(getBundleIdentifier()) && !MessageResource.NO_BUNDLE.equals(getBundleIdentifier())) {
 			filePath.append(getBundleIdentifier()).append(CoreConstants.SLASH);
+		}
 
 		return filePath.toString();
 	}
 
-	private String getLocalizableFileName() {
+	private String getLocalizableFileName(String version) {
 		StringBuffer fileName = new StringBuffer();
 
 		if (StringUtil.isEmpty(getBundleIdentifier()) || MessageResource.NO_BUNDLE.equals(getBundleIdentifier())) {
-			fileName.append(NON_BUNDLE_LOCALIZATION_FILE_NAME)
-					.append(CoreConstants.UNDER).append(getLocale())
-					.append(NON_BUNDLE_LOCALIZATION_FILE_EXTENSION);
+			fileName.append(NON_BUNDLE_LOCALIZATION_FILE_NAME);
 		} else {
-			fileName.append(BUNDLE_LOCALIZATION_FILE_NAME)
-					.append(CoreConstants.UNDER).append(getLocale())
-					.append(NON_BUNDLE_LOCALIZATION_FILE_EXTENSION);
+			fileName.append(BUNDLE_LOCALIZATION_FILE_NAME);
 		}
+
+		fileName.append(CoreConstants.UNDER).append(getLocale());
+		if (version != null) {
+			fileName.append(CoreConstants.UNDER).append(version);
+		}
+		fileName.append(NON_BUNDLE_LOCALIZATION_FILE_EXTENSION);
 
 		return fileName.toString();
 	}
@@ -270,19 +290,21 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		if (iwc == null || IWMainApplication.getDefaultIWMainApplication().getSettings().getBoolean("flush_each_localization_prop", Boolean.FALSE)) {
 			storeState();
 		} else {
+			String path = getLocalizableFilePath();
+
 			RepositoryResourceLocalizer localizer = null;
 			HttpServletRequest request = iwc.getRequest();
 			Object previousLocalizations = request.getAttribute(RepositoryService.REQUEST_LOCALIZATIONS);
 			if (previousLocalizations instanceof RepositoryResourceLocalizer) {
 				localizer = (RepositoryResourceLocalizer) previousLocalizations;
 				Map<String, Map<String, String>> allLocalizations = localizer.getLocalizations();
-				Map<String, String> currentLocalizations = allLocalizations.get(getLocalizableFilePath());
+				Map<String, String> currentLocalizations = allLocalizations.get(path);
 				MapUtil.append(currentLocalizations, getLookup());
-				allLocalizations.put(getLocalizableFilePath(), currentLocalizations);
+				allLocalizations.put(path, currentLocalizations);
 				localizer.setLocalizations(allLocalizations);
 			} else {
 				Map<String, Map<String, String>> localizations = new HashMap<String, Map<String,String>>();
-				localizations.put(getLocalizableFilePath(), getLookup());
+				localizations.put(path, getLookup());
 				localizer = new RepositoryResourceLocalizer(localizations);
 			}
 			request.setAttribute(RepositoryService.REQUEST_LOCALIZATIONS, localizer);
