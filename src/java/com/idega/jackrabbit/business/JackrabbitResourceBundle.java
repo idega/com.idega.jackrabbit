@@ -88,11 +88,13 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 		if (MapUtil.isEmpty(super.getLookup())) {
 			Properties localizationProps = new Properties();
 
-			String path = getLocalizableFilePath();
-			InputStream sourceStream = getResourceInputStream(path);
-
+			String path = null;
 			String content = null;
+			InputStream sourceStream = null;
 			try {
+				path = getLocalizableFilePath();
+				sourceStream = getResourceInputStream(path);
+
 				content = StringHandler.getContentFromInputStream(sourceStream);
 			} catch (Exception e) {
 				LOGGER.log(Level.WARNING, "Failed to read content from " + path + " cause of: ", e);
@@ -209,13 +211,14 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 
 		Integer version = null;
 		boolean checkedWithoutError = false;
-		while (!checkedWithoutError) {
+		while (!checkedWithoutError && (version == null || version <= 1000)) {
 			path = getLocalizableFolderPath() + getLocalizableFileName(version == null ? null : String.valueOf(version));
 			try {
 				getRepositoryService().exists(path);
 				checkedWithoutError = true;
 				return path;
 			} catch (Exception e) {
+				path = null;
 				checkedWithoutError = false;
 				version = version == null ? 1 : version + 1;
 			}
@@ -291,6 +294,10 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 			storeState();
 		} else {
 			String path = getLocalizableFilePath();
+			if (StringUtil.isEmpty(path)) {
+				LOGGER.warning("Unable to set value '" + value + "' for keyword '" + key + "'");
+				return value;
+			}
 
 			RepositoryResourceLocalizer localizer = null;
 			HttpServletRequest request = iwc.getRequest();
