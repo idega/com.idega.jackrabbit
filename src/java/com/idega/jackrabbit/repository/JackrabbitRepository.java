@@ -27,6 +27,7 @@ import java.util.zip.ZipInputStream;
 import javax.jcr.Binary;
 import javax.jcr.Credentials;
 import javax.jcr.ImportUUIDBehavior;
+import javax.jcr.ItemExistsException;
 import javax.jcr.LoginException;
 import javax.jcr.NoSuchWorkspaceException;
 import javax.jcr.Node;
@@ -746,6 +747,8 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 		try {
 			return createFolder(getSession(user), path, true, true) != null;
+		} catch (ItemExistsException e) {
+			getLogger().log(Level.WARNING, "Error creating folder " + path + ": such folder already exist", e);
 		} catch (RepositoryException e) {
 			getLogger().log(Level.WARNING, "Error creating folder " + path, e);
 		}
@@ -1002,12 +1005,17 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		}
 
 		String userPath = authenticationBusiness.getUserPath(loginName);
-		if (!createFolderAsRoot(userPath))
-			throw new RepositoryException("Node at " + userPath + " can not be created for user " + user);
+
+		if (!createFolderAsRoot(userPath)) {
+			getLogger().warning("Node at " + userPath + " can not be created for user " + user);
+			return false;
+		}
 
 		String userHomeFolder = getUserHomeFolderPath(loginName);
-		if (!createFolderAsRoot(userHomeFolder))
-			throw new RepositoryException("Home folder at " + userHomeFolder + " can not be created for user " + user);
+		if (createFolderAsRoot(userHomeFolder)) {
+			getLogger().warning("Home folder at " + userHomeFolder + " can not be created for user " + user);
+			return false;
+		}
 
 		createFolderAsRoot(userHomeFolder + RepositoryConstants.FOLDER_NAME_DROPBOX);
 		createFolderAsRoot(userHomeFolder + RepositoryConstants.FOLDER_NAME_PUBLIC);
