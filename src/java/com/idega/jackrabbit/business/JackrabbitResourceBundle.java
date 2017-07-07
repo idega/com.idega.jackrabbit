@@ -287,7 +287,9 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 			return value;
 		}
 
-		getLookup().put(key, value);
+		if (key != null && value != null) {
+			getLookup().put(key, value);
+		}
 
 		IWContext iwc = CoreUtil.getIWContext();
 		if (iwc == null || IWMainApplication.getDefaultIWMainApplication().getSettings().getBoolean("flush_each_localization_prop", Boolean.FALSE)) {
