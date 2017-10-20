@@ -76,7 +76,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 				getLogger().log(Level.WARNING, "Error getting size of " + path, e);
 			}
 
-		return size;
+		return size == null ? 0 : size;
 	}
 
 	@Override
