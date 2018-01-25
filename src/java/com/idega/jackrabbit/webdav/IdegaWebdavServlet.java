@@ -36,10 +36,12 @@ import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.jackrabbit.repository.IdegaSessionProvider;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
+import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
 import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
+import com.idega.util.CoreUtil;
 import com.idega.util.FileUtil;
 import com.idega.util.ListUtil;
 import com.idega.util.StringHandler;
@@ -132,6 +134,10 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 
 			//	Need to resolve access rights
 			User user = getSecurityHelper().getCurrentUser(session);
+			if (user == null) {
+				IWContext iwc = CoreUtil.getIWContext();
+				user = iwc == null || !iwc.isLoggedOn() ? null : iwc.getLoggedInUser();
+			}
 			if (user == null) {
 				throw new DavException(DavServletResponse.SC_FORBIDDEN, "User is not logged in, resource " + path + " is not accessible");
 			}
