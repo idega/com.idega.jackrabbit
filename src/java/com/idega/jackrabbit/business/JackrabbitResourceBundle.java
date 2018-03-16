@@ -119,7 +119,11 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 			setLookup(props);
 		}
 
-		return super.getLookup();
+		Map<String, String> props = super.getLookup();
+		if (props == null) {
+			props = new TreeMap<>();
+		}
+		return props;
 	}
 
 	@Override
@@ -180,6 +184,10 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 
 	@Override
 	public String getLocalizedString(String key) {
+		if (StringUtil.isEmpty(key)) {
+			return null;
+		}
+
 		String returnObj = getLookup().get(key);
 		if (returnObj != null && !"null".equals(returnObj)) {
 			return returnObj;
@@ -324,8 +332,9 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 
 	@Override
 	public void setMessages(Map<String, String> values) {
-		for (Object key : values.keySet())
+		for (Object key : values.keySet()) {
 			setString(String.valueOf(key), String.valueOf(values.get(key)));
+		}
 
 		storeState();
 	}
