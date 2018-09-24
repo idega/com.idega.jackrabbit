@@ -214,7 +214,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return uploadFile(parentPath, fileName, StringHandler.getStreamFromString(fileContentString), contentType,
 					securityHelper.getSuperAdmin(), false) != null;
 		} catch (Exception e) {
-			getLogger().log(Level.WARNING, "Error uploading file: " + fileContentString + "\n to: " + parentPath + fileName, e);
+			getLogger().log(Level.WARNING, "Error uploading file to: " + parentPath + fileName, e);
 		}
 		return false;
 	}
