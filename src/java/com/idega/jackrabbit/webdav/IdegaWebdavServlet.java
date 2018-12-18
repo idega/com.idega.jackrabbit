@@ -30,6 +30,7 @@ import org.apache.jackrabbit.webdav.jcr.JCRWebdavServerServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.idega.core.accesscontrol.business.AccessController;
+import com.idega.core.accesscontrol.business.LoginBusinessBean;
 import com.idega.core.accesscontrol.dao.PermissionDAO;
 import com.idega.core.accesscontrol.data.bean.ICPermission;
 import com.idega.core.file.util.MimeTypeUtil;
@@ -65,15 +66,17 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 	private JackrabbitSecurityHelper securityHelper;
 
 	private JackrabbitSecurityHelper getSecurityHelper() {
-		if (securityHelper == null)
+		if (securityHelper == null) {
 			ELUtil.getInstance().autowire(this);
+		}
 		return securityHelper;
 	}
 
 	@Override
 	public RepositoryService getRepository() {
-		if (repository == null)
+		if (repository == null) {
 			ELUtil.getInstance().autowire(this);
+		}
 		return repository;
 	}
 
@@ -92,6 +95,17 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 	private void doServeRequest(String path, HttpServletRequest request, HttpServletResponse response) throws Exception {
 		long start = System.currentTimeMillis();
 		try {
+			String uuid = request.getParameter(LoginBusinessBean.PARAM_LOGIN_BY_UNIQUE_ID);
+			if (!StringUtil.isEmpty(uuid)) {
+				String state = request.getParameter(LoginBusinessBean.LoginStateParameter);
+				if (state != null && state.equals(LoginBusinessBean.LOGIN_EVENT_LOGIN)) {
+					LoginBusinessBean loginBusiness = LoginBusinessBean.getLoginBusinessBean(request);
+					if (!loginBusiness.isLoggedOn(request)) {
+						loginBusiness.logInByUUID(request, uuid);
+					}
+				}
+			}
+
 			int semiColonIndex = path.lastIndexOf(CoreConstants.SEMICOLON);
 			if (semiColonIndex > 0) {
 				path = path.substring(0, semiColonIndex);
