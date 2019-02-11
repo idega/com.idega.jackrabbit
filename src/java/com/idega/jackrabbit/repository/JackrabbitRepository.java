@@ -64,6 +64,7 @@ import com.idega.core.accesscontrol.data.bean.UserLogin;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWBundle;
 import com.idega.idegaweb.IWMainApplication;
+import com.idega.idegaweb.IWMainApplicationSettings;
 import com.idega.idegaweb.IWMainApplicationShutdownEvent;
 import com.idega.io.ZipInstaller;
 import com.idega.jackrabbit.IWBundleStarter;
@@ -120,8 +121,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return getApplication(true);
 	}
 	private IWMainApplication getApplication(boolean defaultApp) {
-		if (defaultApp)
+		if (defaultApp) {
 			return IWMainApplication.getDefaultIWMainApplication();
+		}
 
 		IWContext iwc = CoreUtil.getIWContext();
 		return iwc == null ? IWMainApplication.getDefaultIWMainApplication() : iwc.getIWMainApplication();
@@ -129,13 +131,15 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	private User getCurrentUser() {
 		IWContext iwc = CoreUtil.getIWContext();
-		if (iwc != null && iwc.isLoggedOn())
+		if (iwc != null && iwc.isLoggedOn()) {
 			return iwc.getLoggedInUser();
+		}
 
 		try {
 			LoginSession loginSession = ELUtil.getInstance().getBean(LoginSession.class.getName());
-			if (loginSession != null)
+			if (loginSession != null) {
 				return loginSession.getUserEntity();
+			}
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Error getting current user", e);
 		}
@@ -206,6 +210,24 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		this.shutdown();
 	}
 
+	private void warning(String warning) {
+		if (StringUtil.isEmpty(warning)) {
+			return;
+		}
+
+		IWMainApplication iwma = getApplication();
+		if (iwma == null) {
+			return;
+		}
+
+		IWMainApplicationSettings settings = iwma.getSettings();
+		if (settings == null || !settings.getBoolean("jcr_debug", false)) {
+			return;
+		}
+
+		warning(warning);
+	}
+
 	@Override
 	public boolean uploadFileAndCreateFoldersFromStringAsRoot(String parentPath, String fileName, String fileContentString,	String contentType)
 			throws RepositoryException {
@@ -244,21 +266,23 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		long start = measureUploadProcess ? System.currentTimeMillis() : 0;
 
 		if (parentPath == null) {
-			getLogger().warning("Parent path is not defined!");
+			warning("Parent path is not defined!");
 			return null;
 		}
 		if (StringUtil.isEmpty(fileName)) {
-			getLogger().warning("File name is not defined!");
+			warning("File name is not defined!");
 			return null;
 		}
 		if (stream == null) {
-			getLogger().warning("Input stream is invalid!");
+			warning("Input stream is invalid!");
 			return null;
 		}
-		if (parentPath.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
+		if (parentPath.startsWith(CoreConstants.WEBDAV_SERVLET_URI)) {
 			parentPath = parentPath.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
-		if (!parentPath.endsWith(CoreConstants.SLASH))
+		}
+		if (!parentPath.endsWith(CoreConstants.SLASH)) {
 			parentPath = parentPath.concat(CoreConstants.SLASH);
+		}
 
 		Node file = null;
 		Node resource = null;
@@ -303,8 +327,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 				file.addMixin(JcrConstants.MIX_VERSIONABLE);
 			} else {
-				if (resource == null)
+				if (resource == null) {
 					resource = file.addNode(JcrConstants.JCR_CONTENT, JcrConstants.NT_RESOURCE);
+				}
 			}
 			binary = session.getValueFactory().createBinary(stream);
 			resource.setProperty(JcrConstants.JCR_DATA, binary);
@@ -319,23 +344,27 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 			session.save();
 
-			if (versionable)
+			if (versionable) {
 				return doMakeVersionable(session, versionManager, file) ? file : null;
+			}
 
 			return file;
 		} finally {
-			if (binary != null)
+			if (binary != null) {
 				binary.dispose();
-			if (closeStream)
+			}
+			if (closeStream) {
 				IOUtil.close(stream);
+			}
 
 			logout(session);
 
 			if (measureUploadProcess) {
 				long duration = System.currentTimeMillis() - start;
 				if (duration >= 1000) {
-					if (fileName.startsWith(CoreConstants.SLASH) && parentPath.endsWith(CoreConstants.SLASH))
+					if (fileName.startsWith(CoreConstants.SLASH) && parentPath.endsWith(CoreConstants.SLASH)) {
 						fileName = fileName.substring(1);
+					}
 					getLogger().info("******** It took " + duration + " ms to upload " + parentPath + fileName + " as " + user +
 							(ArrayUtil.isEmpty(properties) ? CoreConstants.EMPTY : " and set properties: " +
 									new ArrayList<AdvancedProperty>(Arrays.asList(properties))));
@@ -345,8 +374,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	private boolean doMakeVersionable(Session session, VersionManager versionManager, Node node) throws RepositoryException {
-		if (versionManager == null || node == null)
+		if (versionManager == null || node == null) {
 			return false;
+		}
 
 		session = session == null ? node.getSession() : session;
 
@@ -379,8 +409,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 					continue;
 				}
 
-				if (theLatest.getCreated().before(version.getCreated()))
+				if (theLatest.getCreated().before(version.getCreated())) {
 					theLatest = version;
+				}
 			}
 			versionManager.restore(theLatest, true);
 		}
@@ -453,9 +484,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			versionId = nodePath.substring(nodePath.lastIndexOf(CoreConstants.SLASH) + 1);
 			return Double.valueOf(versionId);
 		} catch (IndexOutOfBoundsException e) {
-			getLogger().warning("Error while trying to get version from " + nodePath);
+			warning("Error while trying to get version from " + nodePath);
 		} catch (NumberFormatException e) {
-			getLogger().warning("Error while converting " + versionId + " to Double");
+			warning("Error while converting " + versionId + " to Double");
 		}
 
 		return version;
@@ -477,12 +508,15 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		return getNode(parent, nodeName, createIfNotFound, type, true);
 	}
 	private Node getNode(Node parent, String nodeName, boolean createIfNotFound, String type, boolean reTry) throws RepositoryException {
-		if (nodeName.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
+		if (nodeName.startsWith(CoreConstants.WEBDAV_SERVLET_URI)) {
 			nodeName = nodeName.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
-		if (nodeName.startsWith(CoreConstants.SLASH))
+		}
+		if (nodeName.startsWith(CoreConstants.SLASH)) {
 			nodeName = nodeName.substring(1);
-		if (nodeName.endsWith(CoreConstants.SLASH))
+		}
+		if (nodeName.endsWith(CoreConstants.SLASH)) {
 			nodeName = nodeName.substring(0, nodeName.length() - 1);
+		}
 
 		Node node = null;
 		try {
@@ -507,8 +541,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 				node = getNode(parent, name, false, type);
 				if (node == null) {
 					node = noType ? parent.addNode(name) : parent.addNode(name, type);
-					if (node == null)
+					if (node == null) {
 						throw new RepositoryException("Unable to add node " + name + " to the parent " + parent);
+					}
 
 					setDefaultProperties(node, type);
 				}
@@ -528,8 +563,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			node.addMixin(mixin);
 		}
 
-		if (!StringUtil.isEmpty(nodeType))
+		if (!StringUtil.isEmpty(nodeType)) {
 			node.setPrimaryType(nodeType);
+		}
 
 //		String idegaNode = null;
 //		if (JcrConstants.NT_FOLDER.equals(nodeType)) {
@@ -594,15 +630,16 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public void logout(Session session) {
-		if (session != null && session.isLive())
+		if (session != null && session.isLive()) {
 			session.logout();
+		}
 	}
 
 	@Override
 	public InputStream getInputStream(String path) throws IOException, RepositoryException {
 		String tmpPath =  getPath(path);
 		if (StringUtil.isEmpty(tmpPath)) {
-			getLogger().warning("Path is not provided");
+			warning("Path is not provided");
 			return null;
 		}
 
@@ -617,11 +654,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	private InputStream getInputStream(String path, User user) throws IOException, RepositoryException {
 		if (StringUtil.isEmpty(path)) {
-			getLogger().warning("Path to resource is not defined!");
+			warning("Path to resource is not defined!");
 			return null;
 		}
-		if (path.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
+		if (path.startsWith(CoreConstants.WEBDAV_SERVLET_URI)) {
 			path = path.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
+		}
 
 		Session session = null;
 		try {
@@ -634,7 +672,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 				file = getNode(root, path, false, null);
 			}
 			if (file == null) {
-				getLogger().warning("Resource does not exist: " + path);
+				warning("Resource does not exist: " + path);
 				return null;
 			}
 
@@ -649,38 +687,42 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public InputStream getInputStream(Session session, String path) throws IOException, RepositoryException {
 		Binary data = getBinary(session, path, false);
-		if (data == null)
+		if (data == null) {
 			throw new IOException("Data can not be resolved for " + path);
+		}
 
 		return data.getStream();
 	}
 
 	private Binary getBinary(Session session, String path, boolean closeSession) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return null;
+		}
 
 		if (session == null || !session.isLive()) {
-			getLogger().warning("JCR session is invalid");
+			warning("JCR session is invalid");
 			return null;
 		}
 
 		try {
 			Node file = getNode(path, false, session, false);
-			if (file == null)
+			if (file == null) {
 				return null;
+			}
 
 			Node resource = getResourceNode(file);
 			Property prop = resource == null ? null : resource.getProperty(JcrConstants.JCR_DATA);
 			return prop == null ? null : prop.getBinary();
 		} finally {
-			if (closeSession)
+			if (closeSession) {
 				logout(session);
+			}
 		}
 	}
 
 	private InputStream getInputStream(Binary data, String path) throws IOException, RepositoryException {
 		if (data == null) {
-			getLogger().warning("Value is not set for resource!");
+			warning("Value is not set for resource!");
 			return null;
 		}
 
@@ -707,7 +749,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public boolean delete(String path, User user) throws RepositoryException {
 		if (StringUtil.isEmpty(path)) {
-			getLogger().warning("Resource is not defined!");
+			warning("Resource is not defined!");
 			return false;
 		}
 
@@ -719,7 +761,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			Node root = session.getRootNode();
 			Node fileOrFolder = getNode(root, path, false, null);
 			if (fileOrFolder == null) {
-				getLogger().warning("Resource does not exist: " + path);
+				warning("Resource does not exist: " + path);
 				return false;
 			}
 
@@ -741,7 +783,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 	private boolean createFolder(String path, User user) throws RepositoryException {
 		if (StringUtil.isEmpty(path)) {
-			getLogger().warning("Resource path is not defined!");
+			warning("Resource path is not defined!");
 			return false;
 		}
 
@@ -763,20 +805,22 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			Node root = session.getRootNode();
 			Node folder = getNode(root, path, JcrConstants.NT_FOLDER);
 
-			if (folder != null && saveSession)
+			if (folder != null && saveSession) {
 				session.save();
+			}
 
 			return folder;
 		} finally {
-			if (logout)
+			if (logout) {
 				logout(session);
+			}
 		}
 	}
 
 	@Override
 	public AccessControlPolicy[] applyAccessControl(String absPath, AccessControlPolicy[] policies) throws RepositoryException {
 		if (StringUtil.isEmpty(absPath) || ArrayUtil.isEmpty(policies)) {
-			getLogger().warning("Path (" + absPath + ") or the policies (" + policies + ") are invalid");
+			warning("Path (" + absPath + ") or the policies (" + policies + ") are invalid");
 			return null;
 		}
 
@@ -835,8 +879,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	private boolean isValidPath(String absolutePath) {
-		if (StringUtil.isEmpty(absolutePath) || absolutePath.indexOf(CoreConstants.SLASH) == -1)
+		if (StringUtil.isEmpty(absolutePath) || absolutePath.indexOf(CoreConstants.SLASH) == -1) {
 			return false;
+		}
 
 		return true;
 	}
@@ -901,55 +946,65 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			node = getNode(absolutePath, createIfNotFound, session, closeSession);
 			return node;
 		} finally {
-			if (node == null || closeSession)
+			if (node == null || closeSession) {
 				logout(session);
+			}
 		}
 	}
 	private Node getNode(String absolutePath, boolean createIfNotFound, Session session, boolean closeSession) throws RepositoryException {
-		if (!isValidPath(absolutePath) || session == null || !session.isLive())
+		if (!isValidPath(absolutePath) || session == null || !session.isLive()) {
 			return null;
+		}
 
 		try {
 			Node root = session.getRootNode();
 			return getNode(root, absolutePath, createIfNotFound, null);
 		} finally {
-			if (closeSession)
+			if (closeSession) {
 				logout(session);
+			}
 		}
 	}
 
 	@Override
 	public boolean setProperties(String path, com.idega.repository.bean.Property... properties)	throws RepositoryException {
-		if (StringUtil.isEmpty(path) || ArrayUtil.isEmpty(properties))
+		if (StringUtil.isEmpty(path) || ArrayUtil.isEmpty(properties)) {
 			return false;
+		}
 
-		if (path.startsWith(CoreConstants.WEBDAV_SERVLET_URI))
+		if (path.startsWith(CoreConstants.WEBDAV_SERVLET_URI)) {
 			path = path.replaceFirst(CoreConstants.WEBDAV_SERVLET_URI, CoreConstants.EMPTY);
+		}
 
 		Session session = null;
 		try {
 			Node node = getNode(path, false);
-			if (node == null)
+			if (node == null) {
 				return false;
+			}
 
 			session = node.getSession();
 			addListeners(session);
 			for (com.idega.repository.bean.Property property: properties) {
 				Serializable value = property.getValue();
-				if (value == null)
+				if (value == null) {
 					continue;
+				}
 
 				Value propValue = null;
-				if (value instanceof String)
+				if (value instanceof String) {
 					propValue = new StringValue((String) value);
+				}
 
-				if (propValue == null)
+				if (propValue == null) {
 					node.setProperty(property.getKey(), value.toString());
-				else
+				} else {
 					node.setProperty(property.getKey(), propValue);
+				}
 			}
-			if (session != null)
+			if (session != null) {
 				session.save();
+			}
 
 			return true;
 		} finally {
@@ -981,7 +1036,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	private Credentials getCredentials(String userNameOrId, String password, AdvancedProperty... attributes) {
 		if (StringUtil.isEmpty(userNameOrId)) {
-			getLogger().warning("User name or ID is not defined!");
+			warning("User name or ID is not defined!");
 			return null;
 		}
 
@@ -1000,20 +1055,20 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public boolean generateUserFolders(User user, String loginName) throws RepositoryException {
 		if (StringUtil.isEmpty(loginName)) {
-			getLogger().warning("User name is not defined");
+			warning("User name is not defined");
 			return false;
 		}
 
 		String userPath = authenticationBusiness.getUserPath(loginName);
 
 		if (!createFolderAsRoot(userPath)) {
-			getLogger().warning("Node at " + userPath + " can not be created for user " + user);
+			warning("Node at " + userPath + " can not be created for user " + user);
 			return false;
 		}
 
 		String userHomeFolder = getUserHomeFolderPath(loginName);
 		if (createFolderAsRoot(userHomeFolder)) {
-			getLogger().warning("Home folder at " + userHomeFolder + " can not be created for user " + user);
+			warning("Home folder at " + userHomeFolder + " can not be created for user " + user);
 			return false;
 		}
 
@@ -1098,19 +1153,22 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	private boolean getExistence(String absolutePath, boolean tryEncoded, boolean throwException) throws RepositoryException {
-		if (!isValidPath(absolutePath))
+		if (!isValidPath(absolutePath)) {
 			return false;
+		}
 
 		absolutePath = getPath(absolutePath, tryEncoded);
 
 		if (!absolutePath.startsWith(CoreConstants.PATH_FILES_ROOT)) {
 			int firstFilesAppearance = absolutePath.indexOf(CoreConstants.PATH_FILES_ROOT);
-			if (firstFilesAppearance != -1)
+			if (firstFilesAppearance != -1) {
 				absolutePath = absolutePath.substring(firstFilesAppearance);
+			}
 		}
 		int semicolon = absolutePath.indexOf(CoreConstants.SEMICOLON);
-		if (semicolon != -1)
+		if (semicolon != -1) {
 			absolutePath = absolutePath.substring(0, semicolon);
+		}
 
 		if (tryEncoded) {
 			try {
@@ -1126,12 +1184,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return false;
 		} catch (Exception e) {
 			if (tryEncoded) {
-				getLogger().warning("Failed to verify if node '" + absolutePath + "' exists, will try with encoded path");
+				warning("Failed to verify if node '" + absolutePath + "' exists, will try with encoded path");
 				try {
 					String parentPath = getParentPath(absolutePath);
 					String nodeName = getNodeName(absolutePath);
-					if (nodeName.startsWith(CoreConstants.SLASH))
+					if (nodeName.startsWith(CoreConstants.SLASH)) {
 						nodeName = nodeName.substring(1);
+					}
 					nodeName = URLEncoder.encode(nodeName, CoreConstants.ENCODING_UTF8);
 					return getExistence(parentPath + CoreConstants.SLASH + nodeName, false, throwException);
 				} catch (UnsupportedEncodingException uee) {
@@ -1142,7 +1201,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 				if (throwException) {
 					throw new RepositoryException(message);
 				} else {
-					getLogger().warning(message);
+					warning(message);
 					return false;
 				}
 			}
@@ -1154,11 +1213,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public RepositoryItem getRepositoryItem(User user, String path) throws RepositoryException {
 		if (StringUtil.isEmpty(path)) {
-			getLogger().warning("Path is not provided!");
+			warning("Path is not provided!");
 			return null;
 		}
 		if (user == null) {
-			getLogger().warning("User is unknown!");
+			warning("User is unknown!");
 			return null;
 		}
 
@@ -1167,7 +1226,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			session = getSession(user);
 			Node node = getNode(path, false, session, false);
 			if (node == null) {
-				getLogger().warning("Repository item was not found: " + path);
+				warning("Repository item was not found: " + path);
 				return null;
 			}
 
@@ -1192,7 +1251,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public Collection<RepositoryItem> getChildNodes(User user, String path) throws RepositoryException {
 		if (user == null) {
-			getLogger().warning("User is unknown!");
+			warning("User is unknown!");
 			return new ArrayList<RepositoryItem>();
 		}
 
@@ -1201,15 +1260,17 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			Collection<RepositoryItem> items = new ArrayList<RepositoryItem>();
 
 			Node node = getNode(path, false, user, false);
-			if (node == null)
+			if (node == null) {
 				return items;
+			}
 
 			session = node.getSession();
 
 			for (NodeIterator iter = node.getNodes(); iter.hasNext();) {
 				Node childNode = iter.nextNode();
-				if (childNode != null)
+				if (childNode != null) {
 					items.add(new JackrabbitRepositoryItem(childNode.getPath(), user));
+				}
 			}
 			return items;
 		} finally {
@@ -1235,19 +1296,22 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	private boolean isCollection(String path) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return false;
+		}
 
 		Session session = null;
 		try {
 			Node node = getNodeAsRootUser(path, false);
-			if (node == null)
+			if (node == null) {
 				return false;
+			}
 
 			session = node.getSession();
 
-			if (node.hasProperty(JcrConstants.NT_FOLDER))
+			if (node.hasProperty(JcrConstants.NT_FOLDER)) {
 				return true;
+			}
 
 			return node.isNodeType(JcrConstants.NT_FOLDER);
 		} finally {
@@ -1263,8 +1327,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public String getURI(String path) {
 		String serverURL = getWebdavServerURL();
-		if (path.startsWith(serverURL))
+		if (path.startsWith(serverURL)) {
 			return path;
+		}
 
 		return serverURL.concat(path);
 	}
@@ -1283,17 +1348,20 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public List<String> getChildPathsExcludingFoldersAndHiddenFiles(String path) throws RepositoryException {
 		RepositoryItem item = getRepositoryItemAsRootUser(path);
-		if (item == null)
+		if (item == null) {
 			return Collections.emptyList();
+		}
 
 		Collection<RepositoryItem> children = item.getChildren();
-		if (ListUtil.isEmpty(children))
+		if (ListUtil.isEmpty(children)) {
 			return Collections.emptyList();
+		}
 
 		List<String> files = new ArrayList<String>();
 		for (RepositoryItem child: children) {
-			if (child.isCollection() || child.isHidden())
+			if (child.isCollection() || child.isHidden()) {
 				continue;
+			}
 
 			files.add(child.getPath());
 		}
@@ -1304,17 +1372,20 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public List<String> getChildFolderPaths(String path) throws RepositoryException {
 		RepositoryItem item = getRepositoryItemAsRootUser(path);
-		if (item == null)
+		if (item == null) {
 			return Collections.emptyList();
+		}
 
 		Collection<RepositoryItem> children = item.getChildren();
-		if (ListUtil.isEmpty(children))
+		if (ListUtil.isEmpty(children)) {
 			return Collections.emptyList();
+		}
 
 		List<String> folders = new ArrayList<String>();
 		for (RepositoryItem child: children) {
-			if (child.isCollection())
+			if (child.isCollection()) {
 				folders.add(child.getPath());
+			}
 		}
 
 		return folders;
@@ -1348,8 +1419,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public boolean uploadZipFileContents(ZipInputStream zipStream, String uploadPath) throws RepositoryException {
-		if (zipStream == null || StringUtil.isEmpty(uploadPath))
+		if (zipStream == null || StringUtil.isEmpty(uploadPath)) {
 			return false;
+		}
 
 		boolean result = true;
 		ZipEntry entry = null;
@@ -1393,16 +1465,18 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public RepositoryItem getRepositoryItem(String path) throws RepositoryException {
 		Node node = getNode(path);
-		if (node == null)
+		if (node == null) {
 			return null;
+		}
 
 		return new JackrabbitRepositoryItem(path, getUser());
 	}
 
 	@Override
 	public String getUserHomeFolder(User user) {
-		if (user == null)
+		if (user == null) {
 			return null;
+		}
 
 		UserLoginDAO loginDAO = ELUtil.getInstance().getBean(UserLoginDAO.class);
 		UserLogin login = loginDAO.findLoginForUser(user);
@@ -1412,8 +1486,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public void removeProperty(String path, String name) throws RepositoryException {
 		Node node = getNode(path);
-		if (node == null)
+		if (node == null) {
 			return;
+		}
 
 		Session session = null;
 		try {
@@ -1435,8 +1510,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 
 	private String getPath(String path, boolean decode) {
-		if (path == null)
+		if (path == null) {
 			return null;
+		}
 
 		String uriPrefix = getWebdavServerURL();
 		path = path.startsWith(uriPrefix) ? path.substring(uriPrefix.length()) : path;
@@ -1447,16 +1523,18 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			} catch (UnsupportedEncodingException e) {}
 		}
 
-		if (path.indexOf("//") != -1)
+		if (path.indexOf("//") != -1) {
 			path = StringHandler.replace(path, "//", CoreConstants.SLASH);
+		}
 
 		return path;
 	}
 
 	@Override
 	public void addRepositoryChangeListeners(RepositoryEventListener listener) {
-		if (listener == null || eventListeners.contains(listener))
+		if (listener == null || eventListeners.contains(listener)) {
 			return;
+		}
 
 		eventListeners.add(listener);
 	}
@@ -1464,8 +1542,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	private void addListeners(Session session) {
 		try {
 			ObservationManager observationManager = session.getWorkspace().getObservationManager();
-			for (RepositoryEventListener listener: eventListeners)
+			for (RepositoryEventListener listener: eventListeners) {
 				observationManager.addEventListener(listener, listener.getEventTypes(), listener.getPath(), true, null, null, false);
+			}
 		} catch (RepositoryException e) {
 			getLogger().log(Level.WARNING, "Error registering event listeners " + eventListeners, e);
 		}
@@ -1474,8 +1553,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Override
 	public OutputStream getOutputStreamAsRoot(String path) throws IOException, RepositoryException {
 		InputStream input = getInputStreamAsRoot(path);
-		if (input == null)
+		if (input == null) {
 			return null;
+		}
 
 		OutputStream output = new ByteArrayOutputStream();
 		FileUtil.streamToOutputStream(input, output);
@@ -1490,23 +1570,26 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public void storeAccessControlList(AccessControlList acl) {
-		if (acl == null)
+		if (acl == null) {
 			return;
+		}
 
 		// TODO Auto-generated method stub
-		getLogger().warning("Implement! AccessCotrolList: " + acl);
+		warning("Implement! AccessCotrolList: " + acl);
 	}
 
 	@Override
 	public String getName(String path) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return null;
+		}
 
 		Session session = null;
 		try {
 			Node node = getNodeAsRootUser(path, false);
-			if (node == null)
+			if (node == null) {
 				return null;
+			}
 
 			session = node.getSession();
 			return node.getName();
@@ -1517,14 +1600,16 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public long getCreationDate(String path) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return -1;
+		}
 
 		Session session = null;
 		try {
 			Node node = getNodeAsRootUser(path, false);
-			if (node == null)
+			if (node == null) {
 				return -1;
+			}
 
 			session = node.getSession();
 			Property property = node.getProperty(JcrConstants.JCR_CREATED);
@@ -1536,14 +1621,16 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public long getLastModified(String path) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return -1;
+		}
 
 		Session session = null;
 		try {
 			Node node = getNode(path, false);
-			if (node == null)
+			if (node == null) {
 				return -1;
+			}
 
 			session = node.getSession();
 			Property property = node.getProperty(JcrConstants.JCR_LASTMODIFIED);
@@ -1559,8 +1646,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	}
 	@Override
 	public long getLength(String path, User user) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return -1;
+		}
 
 		Binary data = null;
 		Session session = null;
@@ -1570,22 +1658,25 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			data = getBinary(session, path, false);
 			return data == null ? -1 : data.getSize();
 		} finally {
-			if (data != null)
+			if (data != null) {
 				data.dispose();
+			}
 			logout(session);
 		}
 	}
 
 	@Override
 	public boolean isLocked(String path) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return false;
+		}
 
 		Session session = null;
 		try {
 			Node node = getNode(path, false);
-			if (node == null)
+			if (node == null) {
 				return false;
+			}
 
 			session = node.getSession();
 			return node.isLocked();
@@ -1596,14 +1687,16 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public Lock lock(String path, boolean isDeep, boolean isSessionScoped) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return null;
+		}
 
 		Session session = null;
 		try {
 			Node node = getNode(path, false);
-			if (node == null)
+			if (node == null) {
 				return null;
+			}
 
 			session = node.getSession();
 			LockManager lockManger = session.getWorkspace().getLockManager();
@@ -1615,14 +1708,16 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public void unLock(String path) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return;
+		}
 
 		Session session = null;
 		try {
 			Node node = getNode(path, false);
-			if (node == null)
+			if (node == null) {
 				return;
+			}
 
 			session = node.getSession();
 			LockManager lockManger = session.getWorkspace().getLockManager();
@@ -1634,18 +1729,21 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public List<RepositoryItem> getSiblingResources(String path) throws RepositoryException {
-		if (StringUtil.isEmpty(path))
+		if (StringUtil.isEmpty(path)) {
 			return null;
+		}
 
 		String parentPath = getParentPath(path);
-		if (StringUtil.isEmpty(parentPath))
+		if (StringUtil.isEmpty(parentPath)) {
 			return null;
+		}
 
 		Session session = null;
 		try {
 			Node parentNode = getNode(parentPath, false);
-			if (parentNode == null)
+			if (parentNode == null) {
 				return null;
+			}
 
 			session = parentNode.getSession();
 
@@ -1658,14 +1756,17 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 				Session childSession = child.getSession();
 				try {
-					if (childPath == null || path.equals(childPath))
+					if (childPath == null || path.equals(childPath)) {
 						continue;
+					}
 
-					if (child.hasProperty(JcrConstants.NT_FILE) || child.hasProperty(JcrConstants.NT_FOLDER))
+					if (child.hasProperty(JcrConstants.NT_FILE) || child.hasProperty(JcrConstants.NT_FOLDER)) {
 						siblings.add(new JackrabbitRepositoryItem(childPath, user));
+					}
 				} finally {
-					if (!session.toString().equals(childSession.toString()))
+					if (!session.toString().equals(childSession.toString())) {
 						logout(childSession);
+					}
 				}
 			}
 			return siblings;
@@ -1676,8 +1777,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public AuthenticationBusiness getAuthenticationBusiness() {
-		if (authenticationBusiness == null)
+		if (authenticationBusiness == null) {
 			ELUtil.getInstance().autowire(this);
+		}
 		return authenticationBusiness;
 	}
 
@@ -1686,10 +1788,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 		Session session = null;
 		OutputStream out = null;
 		try {
-			if (!StringUtil.isEmpty(outputPath) && !outputPath.endsWith(File.separator))
+			if (!StringUtil.isEmpty(outputPath) && !outputPath.endsWith(File.separator)) {
 				outputPath = outputPath.concat(File.separator);
-			else
+			} else {
 				outputPath = CoreConstants.EMPTY;
+			}
 			String fileName = "store_export.xml";
 			FileUtil.createFileAndFolder(outputPath, fileName);
 			out = new FileOutputStream(outputPath + fileName);
@@ -1711,8 +1814,9 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			String path = System.getProperty("idegaweb.jcr.home", "store");
 			File store = new File(path);
 			File backup = new File(store.getAbsolutePath() + "_backup_" + IWTimestamp.RightNow().getDateString("yyyy-MM-dd_HH-mm-ss"));
-			if (!store.renameTo(backup))
+			if (!store.renameTo(backup)) {
 				return false;
+			}
 
 			shutdown();
 
@@ -1720,10 +1824,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			IWBundle bundle = IWMainApplication.getDefaultIWMainApplication().getBundle(JackrabbitConstants.IW_BUNDLE_IDENTIFIER);
 			initializeRepository(IWBundleStarter.getConfig(bundle), path);
 
-			if (!StringUtil.isEmpty(inputPath) && !inputPath.endsWith(File.separator))
+			if (!StringUtil.isEmpty(inputPath) && !inputPath.endsWith(File.separator)) {
 				inputPath = inputPath.concat(File.separator);
-			else
+			} else {
 				inputPath = CoreConstants.EMPTY;
+			}
 			String fileName = "store_export.xml";
 			in = new FileInputStream(inputPath + fileName);
 
