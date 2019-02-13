@@ -225,7 +225,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return;
 		}
 
-		warning(warning);
+		getLogger().warning(warning);
 	}
 
 	@Override
