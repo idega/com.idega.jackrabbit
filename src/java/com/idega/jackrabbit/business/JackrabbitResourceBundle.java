@@ -64,6 +64,8 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	@Autowired
 	private RepositoryResourcesManager resourcesManager;
 
+	private long lastModified = -1;
+
 	private RepositoryResourcesManager getRepositoryResourcesManager() {
 		if (resourcesManager == null) {
 			ELUtil.getInstance().autowire(this);
@@ -127,10 +129,11 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	}
 
 	@Override
-	public void initialize(String bundleIdentifier, Locale locale) throws IOException {
+	public void initialize(String bundleIdentifier, Locale locale, long lastModified) throws IOException {
 		setLocale(locale);
 		setBundleIdentifier(bundleIdentifier);
 		getLookup();
+		this.lastModified = lastModified;
 	}
 
 	protected InputStream getResourceInputStream(String resourcePath) {
@@ -348,6 +351,11 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	public void removeMessage(String key) {
 		getLookup().remove(key);
 		storeState();
+	}
+
+	@Override
+	public long lastModified() {
+		return lastModified;
 	}
 
 	@Override

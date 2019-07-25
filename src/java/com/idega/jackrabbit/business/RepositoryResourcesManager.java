@@ -98,13 +98,15 @@ public class RepositoryResourcesManager extends DefaultSpringBean implements App
 
 		for (IWBundle bundle: bundles.values()) {
 			List<Locale> locales = bundle.getEnabledLocales();
-			if (ListUtil.isEmpty(locales))
+			if (ListUtil.isEmpty(locales)) {
 				continue;
+			}
 
 			for (Locale locale: locales) {
 				List<MessageResource> messages = messageResourceFactory.getResourceListByBundleAndLocale(bundle.getBundleIdentifier(), locale);
-				if (ListUtil.isEmpty(messages))
+				if (ListUtil.isEmpty(messages)) {
 					continue;
+				}
 
 				JackrabbitResourceBundle repositoryBundle = null;
 				List<String> repositoryResourceKeys = null;
@@ -112,20 +114,22 @@ public class RepositoryResourcesManager extends DefaultSpringBean implements App
 				for (MessageResource messageResource: messages) {
 					if (!(messageResource instanceof JackrabbitResourceBundle)) {
 						Set<String> keys = messageResource.getAllLocalizedKeys();
-						if (ListUtil.isEmpty(keys))
+						if (ListUtil.isEmpty(keys)) {
 							continue;
+						}
 
 						for (String key: keys) {
 							if (!localizationsFromOtherResources.containsKey(key)) {
 								String localized = messageResource.getMessage(key);
-								if (!StringUtil.isEmpty(localized))
+								if (!StringUtil.isEmpty(localized)) {
 									localizationsFromOtherResources.put(key, localized);
+								}
 							}
 						}
 					} else {
 						repositoryBundle = (JackrabbitResourceBundle) messageResource;
 						try {
-							repositoryBundle.initialize(bundle.getBundleIdentifier(), locale);
+							repositoryBundle.initialize(bundle.getBundleIdentifier(), locale, -1);
 						} catch (IOException e) {
 							getLogger().warning("Error initializing " + bundle.getBundleIdentifier() + " for locale " + locale);
 							continue;
@@ -141,8 +145,9 @@ public class RepositoryResourcesManager extends DefaultSpringBean implements App
 					}
 				}
 
-				if (!MapUtil.isEmpty(localizationsFromOtherResources))
+				if (!MapUtil.isEmpty(localizationsFromOtherResources)) {
 					repositoryBundle.setMessages(localizationsFromOtherResources);
+				}
 			}
 		}
 	}
