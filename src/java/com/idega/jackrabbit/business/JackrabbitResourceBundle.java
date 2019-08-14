@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,12 +25,11 @@ import org.springframework.stereotype.Service;
 import com.idega.builder.bean.AdvancedProperty;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWResourceBundle;
-import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryService;
 import com.idega.repository.bean.RepositoryItem;
 import com.idega.repository.event.RepositoryResourceLocalizer;
+import com.idega.servlet.filter.RequestResponseProvider;
 import com.idega.util.CoreConstants;
-import com.idega.util.CoreUtil;
 import com.idega.util.IOUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
@@ -302,8 +302,14 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 			getLookup().put(key, value);
 		}
 
-		IWContext iwc = CoreUtil.getIWContext();
-		if (iwc == null || IWMainApplication.getDefaultIWMainApplication().getSettings().getBoolean("flush_each_localization_prop", Boolean.FALSE)) {
+		HttpServletRequest request = null;
+		RequestResponseProvider rrProvider = null;
+		try {
+			rrProvider = ELUtil.getInstance().getBean(RequestResponseProvider.class);
+		} catch (Exception e) {}
+		request = rrProvider == null ? null : rrProvider.getRequest();
+
+		if (request == null || IWMainApplication.getDefaultIWMainApplication().getSettings().getBoolean("flush_each_localization_prop", Boolean.FALSE)) {
 			storeState();
 		} else {
 			String path = getLocalizableFilePath();
@@ -313,12 +319,12 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 			}
 
 			RepositoryResourceLocalizer localizer = null;
-			HttpServletRequest request = iwc.getRequest();
 			Object previousLocalizations = request.getAttribute(RepositoryService.REQUEST_LOCALIZATIONS);
 			if (previousLocalizations instanceof RepositoryResourceLocalizer) {
 				localizer = (RepositoryResourceLocalizer) previousLocalizations;
 				Map<String, Map<String, String>> allLocalizations = localizer.getLocalizations();
 				Map<String, String> currentLocalizations = allLocalizations.get(path);
+				currentLocalizations = currentLocalizations == null ? new ConcurrentHashMap<String, String>() : new ConcurrentHashMap<String, String>(currentLocalizations);
 				MapUtil.append(currentLocalizations, getLookup());
 				allLocalizations.put(path, currentLocalizations);
 				localizer.setLocalizations(allLocalizations);
