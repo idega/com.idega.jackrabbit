@@ -457,6 +457,14 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 						info.setCreated(version.getCreated().getTime());
 						info.setId(version.getIdentifier());
 						info.setVersion(getVersion(version.toString()));
+
+						ByteArrayOutputStream output = new ByteArrayOutputStream();
+						try {
+							FileUtil.streamToOutputStream(binary.getStream(), output);
+						} catch (Exception e) {}
+						info.setBytes(output.toByteArray());
+						IOUtil.close(output);
+
 						itemsInfo.add(info);
 
 						binary.dispose();
