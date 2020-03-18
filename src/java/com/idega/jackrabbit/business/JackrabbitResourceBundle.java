@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 import com.idega.builder.bean.AdvancedProperty;
+import com.idega.idegaweb.DefaultIWBundle;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWResourceBundle;
 import com.idega.repository.RepositoryService;
@@ -81,7 +82,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	@Override
 	protected void initProperities() {
 		setIdentifier(RESOURCE_IDENTIFIER);
-		setLevel(MessageResourceImportanceLevel.THIRD_ORDER);
+		setLevel(DefaultIWBundle.isProductionEnvironment() ? MessageResourceImportanceLevel.THIRD_ORDER : MessageResourceImportanceLevel.FIRST_ORDER);
 		setAutoInsert(true);
 	}
 
