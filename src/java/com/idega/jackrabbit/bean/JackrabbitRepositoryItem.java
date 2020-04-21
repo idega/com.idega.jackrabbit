@@ -25,6 +25,7 @@ import com.idega.repository.jcr.JCRItem;
 import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
+import com.idega.util.IOUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
 import com.idega.util.expression.ELUtil;
@@ -69,13 +70,21 @@ public class JackrabbitRepositoryItem extends JCRItem {
 
 	@Override
 	public long getLength() {
-		if (size == null)
+		if (size == null) {
 			try {
 				size = getRepositoryService().getLength(path, user);
 			} catch (RepositoryException e) {
 				getLogger().log(Level.WARNING, "Error getting size of " + path, e);
 			}
-
+		}
+		if (size == null) {
+			try {
+				byte[] bytes = IOUtil.getBytesFromInputStream(getRepositoryService().getInputStreamAsRoot(path));
+				if (bytes != null) {
+					size = Integer.valueOf(bytes.length).longValue();
+				}
+			} catch (Exception e) {}
+		}
 		return size == null ? 0 : size;
 	}
 
@@ -183,8 +192,9 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	public long getLastModified() {
 		try {
 			long lastModified = getRepositoryService().getLastModified(path);
-			if (lastModified < 0)
+			if (lastModified < 0) {
 				return getCreationDate();
+			}
 			return lastModified;
 		} catch (RepositoryException e) {}
 		return getCreationDate();
@@ -253,8 +263,9 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	//	TODO: implement
 	@Override
 	public Property getProperty(String property) {
-		if (StringUtil.isEmpty(property))
+		if (StringUtil.isEmpty(property)) {
 			return null;
+		}
 
 		return null;
 //		try {
