@@ -3,6 +3,7 @@ package com.idega.jackrabbit.webdav;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -35,6 +36,7 @@ import com.idega.core.accesscontrol.dao.PermissionDAO;
 import com.idega.core.accesscontrol.data.bean.ICPermission;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplication;
+import com.idega.idegaweb.IWMainApplicationSettings;
 import com.idega.jackrabbit.repository.IdegaSessionProvider;
 import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
 import com.idega.presentation.IWContext;
@@ -143,8 +145,21 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes)) || path.startsWith(themes) ||
 							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat("/undefined/"));
 
+		IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
 		if (!allowAll) {
-			IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
+			IWMainApplicationSettings settings = iwma.getSettings();
+			String accessGrantedProp = settings.getProperty("repository.granted");
+			if (!StringUtil.isEmpty(accessGrantedProp)) {
+				List<String> accessGrantedToPaths = StringUtil.getValuesFromString(accessGrantedProp, CoreConstants.COMMA);
+				if (!ListUtil.isEmpty(accessGrantedToPaths)) {
+					for (Iterator<String> iter = accessGrantedToPaths.iterator(); (iter.hasNext() && !allowAll);) {
+						allowAll = path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(iter.next()));
+					}
+				}
+			}
+		}
+
+		if (!allowAll) {
 			AccessController accessController = iwma.getAccessController();
 
 			//	Need to resolve access rights
