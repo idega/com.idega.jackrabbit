@@ -140,7 +140,8 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 
 		String themes = CoreConstants.CONTENT_PATH + "/themes/";
 		boolean allowAll =	path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(CoreConstants.PUBLIC_PATH)) || path.startsWith(CoreConstants.PUBLIC_PATH) ||
-							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes)) || path.startsWith(themes);
+							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes)) || path.startsWith(themes) ||
+							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat("/undefined/"));
 
 		if (!allowAll) {
 			IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
@@ -166,7 +167,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 					}
 
 					PermissionDAO permissionDAO = ELUtil.getInstance().getBean(PermissionDAO.class);
-					List<ICPermission> permissions = permissionDAO.findPermissions(path, new ArrayList<String>(userRoles));
+					List<ICPermission> permissions = permissionDAO.findPermissions(path, new ArrayList<>(userRoles));
 					if (ListUtil.isEmpty(permissions)) {
 						LOGGER.warning("User " + user + " does not have permission to read " + path);
 						throw new DavException(DavServletResponse.SC_FORBIDDEN);
