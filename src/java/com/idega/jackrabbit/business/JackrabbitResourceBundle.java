@@ -83,7 +83,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	protected void initProperities() {
 		setIdentifier(RESOURCE_IDENTIFIER);
 		setLevel(DefaultIWBundle.isProductionEnvironment() ? MessageResourceImportanceLevel.THIRD_ORDER : MessageResourceImportanceLevel.FIRST_ORDER);
-		setAutoInsert(true);
+		setAutoInsert(false);
 	}
 
 	@Override
@@ -325,12 +325,12 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 				localizer = (RepositoryResourceLocalizer) previousLocalizations;
 				Map<String, Map<String, String>> allLocalizations = localizer.getLocalizations();
 				Map<String, String> currentLocalizations = allLocalizations.get(path);
-				currentLocalizations = currentLocalizations == null ? new ConcurrentHashMap<String, String>() : new ConcurrentHashMap<String, String>(currentLocalizations);
+				currentLocalizations = currentLocalizations == null ? new ConcurrentHashMap<>() : new ConcurrentHashMap<>(currentLocalizations);
 				MapUtil.append(currentLocalizations, getLookup());
 				allLocalizations.put(path, currentLocalizations);
 				localizer.setLocalizations(allLocalizations);
 			} else {
-				Map<String, Map<String, String>> localizations = new HashMap<String, Map<String,String>>();
+				Map<String, Map<String, String>> localizations = new HashMap<>();
 				localizations.put(path, getLookup());
 				localizer = new RepositoryResourceLocalizer(localizations);
 			}
