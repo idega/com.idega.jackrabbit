@@ -83,7 +83,7 @@ public class JackrabbitResourceBundle extends IWResourceBundle implements Messag
 	protected void initProperities() {
 		setIdentifier(RESOURCE_IDENTIFIER);
 		setLevel(DefaultIWBundle.isProductionEnvironment() ? MessageResourceImportanceLevel.THIRD_ORDER : MessageResourceImportanceLevel.FIRST_ORDER);
-		setAutoInsert(false);
+		setAutoInsert(true);
 	}
 
 	@Override
