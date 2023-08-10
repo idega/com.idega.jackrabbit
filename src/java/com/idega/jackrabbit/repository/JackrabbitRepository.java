@@ -42,6 +42,7 @@ import javax.jcr.UnsupportedRepositoryOperationException;
 import javax.jcr.Value;
 import javax.jcr.lock.Lock;
 import javax.jcr.lock.LockManager;
+import javax.jcr.nodetype.NodeType;
 import javax.jcr.observation.ObservationManager;
 import javax.jcr.security.AccessControlPolicy;
 import javax.jcr.version.Version;
@@ -111,7 +112,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	@Autowired
 	private AuthenticationBusiness authenticationBusiness;
 
-	private List<RepositoryEventListener> eventListeners = new ArrayList<RepositoryEventListener>();
+	private List<RepositoryEventListener> eventListeners = new ArrayList<>();
 
 	private Logger getLogger() {
 		return LOGGER;
@@ -367,7 +368,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 					}
 					getLogger().info("******** It took " + duration + " ms to upload " + parentPath + fileName + " as " + user +
 							(ArrayUtil.isEmpty(properties) ? CoreConstants.EMPTY : " and set properties: " +
-									new ArrayList<AdvancedProperty>(Arrays.asList(properties))));
+									new ArrayList<>(Arrays.asList(properties))));
 				}
 			}
 		}
@@ -432,7 +433,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public List<RepositoryItemVersionInfo> getVersions(String parentPath, String fileName) throws RepositoryException {
-		List<RepositoryItemVersionInfo> itemsInfo = new ArrayList<RepositoryItemVersionInfo>();
+		List<RepositoryItemVersionInfo> itemsInfo = new ArrayList<>();
 
 		Session session = null;
 		try {
@@ -1260,12 +1261,12 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 	public Collection<RepositoryItem> getChildNodes(User user, String path) throws RepositoryException {
 		if (user == null) {
 			warning("User is unknown!");
-			return new ArrayList<RepositoryItem>();
+			return new ArrayList<>();
 		}
 
 		Session session = null;
 		try {
-			Collection<RepositoryItem> items = new ArrayList<RepositoryItem>();
+			Collection<RepositoryItem> items = new ArrayList<>();
 
 			Node node = getNode(path, false, user, false);
 			if (node == null) {
@@ -1365,7 +1366,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return Collections.emptyList();
 		}
 
-		List<String> files = new ArrayList<String>();
+		List<String> files = new ArrayList<>();
 		for (RepositoryItem child: children) {
 			if (child.isCollection() || child.isHidden()) {
 				continue;
@@ -1389,7 +1390,7 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 			return Collections.emptyList();
 		}
 
-		List<String> folders = new ArrayList<String>();
+		List<String> folders = new ArrayList<>();
 		for (RepositoryItem child: children) {
 			if (child.isCollection()) {
 				folders.add(child.getPath());
@@ -1757,7 +1758,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 			User user = getUser();
 
-			List<RepositoryItem> siblings = new ArrayList<RepositoryItem>();
+			List<RepositoryItem> siblings = new ArrayList<>();
+			List<String> correctTypes = Arrays.asList(
+					JcrConstants.NT_FILE,
+					JcrConstants.NT_FOLDER
+			);
 			for (NodeIterator nodeIterator = parentNode.getNodes(); nodeIterator.hasNext();) {
 				Node child = nodeIterator.nextNode();
 				String childPath = child.getPath();
@@ -1768,7 +1773,13 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 						continue;
 					}
 
-					if (child.hasProperty(JcrConstants.NT_FILE) || child.hasProperty(JcrConstants.NT_FOLDER)) {
+					boolean addSibling = child.hasProperty(JcrConstants.NT_FILE) || child.hasProperty(JcrConstants.NT_FOLDER);
+					if (!addSibling) {
+						NodeType type = child.getPrimaryNodeType();
+						String typeName = type == null ? null : type.getName();
+						addSibling = !StringUtil.isEmpty(typeName) && correctTypes.contains(typeName);
+					}
+					if (addSibling) {
 						siblings.add(new JackrabbitRepositoryItem(childPath, user));
 					}
 				} finally {
