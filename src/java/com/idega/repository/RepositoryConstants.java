@@ -32,7 +32,7 @@ public class RepositoryConstants {
 
 								PROPERTYNAME_CATEGORY = "categories",
 
-								REPOSITORY = "repository",
+								REPOSITORY = CoreConstants.REPOSITORY,
 
 								DEFAULT_WORKSPACE_ROOT_CONTENT = CoreConstants.SLASH + CoreConstants.REPOSITORY_DEFAULT_WORKSPACE +
 											JcrRemotingConstants.ROOT_ITEM_RESOURCEPATH;
