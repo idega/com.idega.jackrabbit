@@ -2,10 +2,6 @@ package com.idega.jackrabbit.webdav;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,23 +26,16 @@ import org.apache.jackrabbit.webdav.WebdavResponse;
 import org.apache.jackrabbit.webdav.jcr.JCRWebdavServerServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.idega.core.accesscontrol.business.AccessController;
 import com.idega.core.accesscontrol.business.LoginBusinessBean;
-import com.idega.core.accesscontrol.dao.PermissionDAO;
-import com.idega.core.accesscontrol.data.bean.ICPermission;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplication;
-import com.idega.idegaweb.IWMainApplicationSettings;
 import com.idega.jackrabbit.repository.IdegaSessionProvider;
-import com.idega.jackrabbit.security.JackrabbitSecurityHelper;
+import com.idega.jackrabbit.security.RepositoryAccessManager;
 import com.idega.presentation.IWContext;
 import com.idega.repository.RepositoryConstants;
 import com.idega.repository.RepositoryService;
-import com.idega.user.data.bean.User;
 import com.idega.util.CoreConstants;
-import com.idega.util.CoreUtil;
 import com.idega.util.FileUtil;
-import com.idega.util.ListUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.StringUtil;
 import com.idega.util.expression.ELUtil;
@@ -65,13 +54,13 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 	private RepositoryService repository;
 
 	@Autowired
-	private JackrabbitSecurityHelper securityHelper;
+	private RepositoryAccessManager repositoryAccessManager;
 
-	private JackrabbitSecurityHelper getSecurityHelper() {
-		if (securityHelper == null) {
+	private RepositoryAccessManager getRepositoryAccessManager() {
+		if (repositoryAccessManager == null) {
 			ELUtil.getInstance().autowire(this);
 		}
-		return securityHelper;
+		return repositoryAccessManager;
 	}
 
 	@Override
@@ -114,7 +103,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 			}
 
 			if (getRepository().getExistence(path)) {
-				writeResponse(request.getSession(false), response, path);
+				writeResponse(request.getSession(false), request, response, path);
 				response.setStatus(DavServletResponse.SC_OK);
 			} else {
 				String message = "Resource '" + StringHandler.replace(path, RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT, CoreConstants.EMPTY) + "' does not exist";
@@ -130,7 +119,7 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 		}
 	}
 
-	private void writeResponse(HttpSession session, HttpServletResponse response, String path) throws IOException, DavException {
+	private void writeResponse(HttpSession session, HttpServletRequest request, HttpServletResponse response, String path) throws Exception {
 		String prefix = RepositoryConstants.DEFAULT_WORKSPACE_ROOT_CONTENT;
 		if (path.startsWith(prefix)) {
 			path = path.replaceFirst(prefix, CoreConstants.EMPTY);
@@ -140,60 +129,9 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 			path = path.substring(0, semicolon);
 		}
 
-		String themes = CoreConstants.CONTENT_PATH + "/themes/";
-		boolean allowAll =	path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(CoreConstants.PUBLIC_PATH)) || path.startsWith(CoreConstants.PUBLIC_PATH) ||
-							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes)) || path.startsWith(themes) ||
-							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat("/undefined/"));
-
-		IWMainApplication iwma = IWMainApplication.getDefaultIWMainApplication();
-		if (!allowAll) {
-			IWMainApplicationSettings settings = iwma.getSettings();
-			String accessGrantedProp = settings.getProperty("repository.granted");
-			if (!StringUtil.isEmpty(accessGrantedProp)) {
-				List<String> accessGrantedToPaths = StringUtil.getValuesFromString(accessGrantedProp, CoreConstants.COMMA);
-				if (!ListUtil.isEmpty(accessGrantedToPaths)) {
-					for (Iterator<String> iter = accessGrantedToPaths.iterator(); (iter.hasNext() && !allowAll);) {
-						allowAll = path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(iter.next()));
-					}
-				}
-			}
-		}
-
-		if (!allowAll) {
-			AccessController accessController = iwma.getAccessController();
-
-			//	Need to resolve access rights
-			User user = getSecurityHelper().getCurrentUser(session);
-			if (user == null) {
-				IWContext iwc = CoreUtil.getIWContext();
-				user = iwc == null || !iwc.isLoggedOn() ? null : iwc.getLoggedInUser();
-			}
-			if (user == null) {
-				throw new DavException(DavServletResponse.SC_FORBIDDEN, "User is not logged in, resource " + path + " is not accessible");
-			}
-
-			if (!getSecurityHelper().isSuperAdmin(user)) {
-				if (iwma.getSettings().getBoolean("jackrabbit_dav_check_permissions", Boolean.FALSE)) {
-					LOGGER.info("Resolve access rights for resource: " + path + " and user " + user);
-					Set<String> userRoles = accessController.getAllRolesForUser(user);
-					if (ListUtil.isEmpty(userRoles)) {
-						LOGGER.warning("User " + user + " does not have any roles!");
-						throw new DavException(DavServletResponse.SC_FORBIDDEN);
-					}
-
-					PermissionDAO permissionDAO = ELUtil.getInstance().getBean(PermissionDAO.class);
-					List<ICPermission> permissions = permissionDAO.findPermissions(path, new ArrayList<>(userRoles));
-					if (ListUtil.isEmpty(permissions)) {
-						LOGGER.warning("User " + user + " does not have permission to read " + path);
-						throw new DavException(DavServletResponse.SC_FORBIDDEN);
-					}
-				}
-	//			AccessControlList acl = getRepository().getAccessControlList(path);
-	//			List<ICPermission> permissions = acl.getPermissions();
-	//			if (ListUtil.isEmpty(permissions)) {
-	//				LOGGER.warning("No permissions for resource: " + path + " and user " + user);
-	//			}
-			}
+		boolean allowed = getRepositoryAccessManager().hasPermission(new IWContext(request, response, request.getServletContext()), path);
+		if (!allowed) {
+			throw new DavException(DavServletResponse.SC_FORBIDDEN, "Resource " + path + " is not accessible");
 		}
 
 		boolean folder = false;
@@ -275,4 +213,5 @@ public class IdegaWebdavServlet extends JCRWebdavServerServlet implements Filter
 
 		chain.doFilter(request, response);
 	}
+
 }
