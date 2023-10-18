@@ -3,6 +3,7 @@ package com.idega.jackrabbit.security;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -117,15 +118,57 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 	}
 
 	@Override
+	public boolean hasPermission(IWContext iwc, Collection<String> paths) throws Exception {
+		if (iwc == null || ListUtil.isEmpty(paths)) {
+			throw new DavException(DavServletResponse.SC_FORBIDDEN, "Invalid parameters, resource(s) " + paths + " are not accessible");
+		}
+
+		boolean anySuccess = false;
+		for (Iterator<String> iter = paths.iterator(); (iter.hasNext() && !anySuccess);) {
+			boolean hasPermission = false;
+			try {
+				hasPermission = hasPermission(iwc, iter.next());
+			} catch (Exception e) {}
+			if (hasPermission) {
+				anySuccess = true;
+			}
+		}
+
+		if (!anySuccess) {
+			throw new DavException(DavServletResponse.SC_FORBIDDEN, "Resource(s) " + paths + " are not accessible");
+		}
+
+		return anySuccess;
+	}
+
+	@Override
 	public boolean hasPermission(IWContext iwc, String path) throws Exception {
 		if (iwc == null || StringUtil.isEmpty(path)) {
 			throw new DavException(DavServletResponse.SC_FORBIDDEN, "Invalid parameters, resource " + path + " is not accessible");
 		}
 
 		String themes = CoreConstants.CONTENT_PATH + "/themes/";
-		boolean allowAll =	path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(CoreConstants.PUBLIC_PATH)) || path.startsWith(CoreConstants.PUBLIC_PATH) ||
-							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat(themes)) || path.startsWith(themes) ||
-							path.startsWith(CoreConstants.WEBDAV_SERVLET_URI.concat("/undefined/"));
+		List<String> publicPaths = Arrays.asList(
+				CoreConstants.WEBDAV_SERVLET_URI.concat(CoreConstants.PUBLIC_PATH),
+				CoreConstants.PUBLIC_PATH,
+
+				CoreConstants.WEBDAV_SERVLET_URI.concat(themes),
+				themes
+		);
+		String publicPathsProp = iwc.getApplicationSettings().getProperty("content.public_paths", StringUtil.getValue(publicPaths));
+		publicPaths = StringUtil.getValuesFromString(publicPathsProp, CoreConstants.COMMA);
+
+		boolean allowAll = false;
+		if (!ListUtil.isEmpty(publicPaths)) {
+			for (Iterator<String> iter = publicPaths.iterator(); (iter.hasNext() && !allowAll);) {
+				String publicPath = iter.next();
+				if (StringUtil.isEmpty(publicPath)) {
+					continue;
+				}
+
+				allowAll = path.startsWith(publicPath);
+			}
+		}
 
 		IWMainApplication iwma = iwc.getIWMainApplication();
 		IWMainApplicationSettings settings = iwma.getSettings();
@@ -141,11 +184,12 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 			}
 		}
 
+		User user = null;
 		if (!allowAll) {
 			AccessController accessController = iwma.getAccessController();
 
 			//	Need to resolve access rights
-			User user = getSecurityHelper().getCurrentUser(iwc.getRequest().getSession(false));
+			user = getSecurityHelper().getCurrentUser(iwc.getRequest().getSession(false));
 			if (user == null) {
 				user = iwc == null || !iwc.isLoggedOn() ? null : iwc.getLoggedInUser();
 			}
@@ -153,35 +197,44 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 				throw new DavException(DavServletResponse.SC_FORBIDDEN, "User is not logged in, resource " + path + " is not accessible");
 			}
 
-			if (!getSecurityHelper().isSuperAdmin(user)) {
-				if (settings.getBoolean("jackrabbit_dav_check_permissions", Boolean.FALSE)) {
-					LOGGER.info("Resolve access rights for resource: " + path + " and user " + user);
-					Set<String> userRoles = accessController.getAllRolesForUser(user);
-					if (ListUtil.isEmpty(userRoles)) {
-						LOGGER.warning("User " + user + " does not have any roles!");
-						throw new DavException(DavServletResponse.SC_FORBIDDEN);
-					}
+			if (getSecurityHelper().isSuperAdmin(user)) {
+				return true;
+			}
 
-					PermissionDAO permissionDAO = ELUtil.getInstance().getBean(PermissionDAO.class);
-					List<ICPermission> permissions = permissionDAO.findPermissions(path, new ArrayList<>(userRoles));
-					if (ListUtil.isEmpty(permissions)) {
-						LOGGER.warning("User " + user + " does not have permission to read " + path);
-						throw new DavException(DavServletResponse.SC_FORBIDDEN);
-					}
+			if (settings.getBoolean("jackrabbit_dav_check_permissions", Boolean.FALSE)) {
+				LOGGER.info("Resolve access rights for resource: " + path + " and user " + user);
+				Set<String> userRoles = accessController.getAllRolesForUser(user);
+				if (ListUtil.isEmpty(userRoles)) {
+					LOGGER.warning("User " + user + " does not have any roles!");
+					throw new DavException(DavServletResponse.SC_FORBIDDEN);
 				}
 
-				WebApplicationContext appContext = WebApplicationContextUtils.getWebApplicationContext(iwc.getServletContext());
-				Map<String, RepositoryItemAccessManager> managers = appContext.getBeansOfType(RepositoryItemAccessManager.class);
-				if (!MapUtil.isEmpty(managers)) {
-					boolean allowed = false;
-					for (Iterator<RepositoryItemAccessManager> iter = managers.values().iterator(); (iter.hasNext() && !allowed);) {
-						allowed = iter.next().hasPermission(iwc, path, user);
-					}
-					return allowed;
+				PermissionDAO permissionDAO = ELUtil.getInstance().getBean(PermissionDAO.class);
+				List<ICPermission> permissions = permissionDAO.findPermissions(path, new ArrayList<>(userRoles));
+				if (ListUtil.isEmpty(permissions)) {
+					LOGGER.warning("User " + user + " does not have permission to read " + path);
+					throw new DavException(DavServletResponse.SC_FORBIDDEN);
 				}
 			}
+
+			WebApplicationContext appContext = WebApplicationContextUtils.getWebApplicationContext(iwc.getServletContext());
+			Map<String, RepositoryItemAccessManager> managers = appContext.getBeansOfType(RepositoryItemAccessManager.class);
+			if (!MapUtil.isEmpty(managers)) {
+				boolean allowed = false;
+				for (Iterator<RepositoryItemAccessManager> iter = managers.values().iterator(); (iter.hasNext() && !allowed);) {
+					allowed = iter.next().hasPermission(iwc, path, user);
+				}
+				if (!allowed) {
+					LOGGER.warning(user + " (ID: " + user.getId() + ", personal ID: " + user.getPersonalID() + ") does not have permission to read " + path);
+				}
+				return allowed;
+			}
+
+			LOGGER.warning("User " + user + " does not have permission to read " + path);
+			throw new DavException(DavServletResponse.SC_FORBIDDEN);
 		}
 
+		LOGGER.info("Allowing to access " + path + " for " + (user == null ? "unauthorized user" : user));
 		return true;
 	}
 
