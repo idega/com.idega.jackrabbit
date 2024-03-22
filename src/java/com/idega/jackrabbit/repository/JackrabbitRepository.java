@@ -1738,6 +1738,11 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 	@Override
 	public List<RepositoryItem> getSiblingResources(String path) throws RepositoryException {
+		return getSiblingResources(null, path);
+	}
+
+	@Override
+	public List<RepositoryItem> getSiblingResources(User user, String path) throws RepositoryException {
 		if (StringUtil.isEmpty(path)) {
 			return null;
 		}
@@ -1749,14 +1754,16 @@ public class JackrabbitRepository implements org.apache.jackrabbit.api.Jackrabbi
 
 		Session session = null;
 		try {
-			Node parentNode = getNode(parentPath, false);
+			Node parentNode = user == null ?
+					getNode(parentPath, false) :
+					getNode(parentPath, false, user, false);
 			if (parentNode == null) {
 				return null;
 			}
 
 			session = parentNode.getSession();
 
-			User user = getUser();
+			user = user == null ? getUser() : user;
 
 			List<RepositoryItem> siblings = new ArrayList<>();
 			List<String> correctTypes = Arrays.asList(
