@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.jcr.AccessDeniedException;
@@ -194,6 +195,11 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 				user = iwc == null || !iwc.isLoggedOn() ? null : iwc.getLoggedInUser();
 			}
 			if (user == null) {
+				//	Double checking if not logged in user is allowed to access resource - before throwing an exception
+				if (isAllowed(iwc, path, user)) {
+					return true;
+				}
+
 				throw new DavException(DavServletResponse.SC_FORBIDDEN, "User is not logged in, resource " + path + " is not accessible");
 			}
 
@@ -217,17 +223,8 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 				}
 			}
 
-			WebApplicationContext appContext = WebApplicationContextUtils.getWebApplicationContext(iwc.getServletContext());
-			Map<String, RepositoryItemAccessManager> managers = appContext.getBeansOfType(RepositoryItemAccessManager.class);
-			if (!MapUtil.isEmpty(managers)) {
-				boolean allowed = false;
-				for (Iterator<RepositoryItemAccessManager> iter = managers.values().iterator(); (iter.hasNext() && !allowed);) {
-					allowed = iter.next().hasPermission(iwc, path, user);
-				}
-				if (!allowed) {
-					LOGGER.warning(user + " (ID: " + user.getId() + ", personal ID: " + user.getPersonalID() + ") does not have permission to read " + path);
-				}
-				return allowed;
+			if (isAllowed(iwc, path, user)) {
+				return true;
 			}
 
 			LOGGER.warning("User " + user + " does not have permission to read " + path);
@@ -236,6 +233,27 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 
 		LOGGER.info("Allowing to access " + path + " for " + (user == null ? "unauthorized user" : user));
 		return true;
+	}
+
+	private boolean isAllowed(IWContext iwc, String path, User user) {
+		try {
+			WebApplicationContext appContext = WebApplicationContextUtils.getWebApplicationContext(iwc.getServletContext());
+			Map<String, RepositoryItemAccessManager> managers = appContext.getBeansOfType(RepositoryItemAccessManager.class);
+			if (!MapUtil.isEmpty(managers)) {
+				boolean allowed = false;
+				for (Iterator<RepositoryItemAccessManager> iter = managers.values().iterator(); (iter.hasNext() && !allowed);) {
+					allowed = iter.next().hasPermission(iwc, path, user);
+				}
+				if (!allowed) {
+					LOGGER.warning((user == null ? "Unauthorized user" : (user + " (ID: " + user.getId() + ", personal ID: " + user.getPersonalID())) + ") does not have permission to read " + path);
+				}
+				return allowed;
+			}
+		} catch (Exception e) {
+			LOGGER.log(Level.WARNING, "Error checking if " + (user == null ? "unauthorized user" : user) + " is allowed to access " + path, e);
+		}
+
+		return false;
 	}
 
 }
