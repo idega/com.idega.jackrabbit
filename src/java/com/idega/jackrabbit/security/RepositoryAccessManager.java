@@ -245,7 +245,7 @@ public class RepositoryAccessManager extends DefaultAccessManager implements com
 					allowed = iter.next().hasPermission(iwc, path, user);
 				}
 				if (!allowed) {
-					LOGGER.warning((user == null ? "Unauthorized user" : (user + " (ID: " + user.getId() + ", personal ID: " + user.getPersonalID())) + ") does not have permission to read " + path);
+					LOGGER.warning((user == null ? "Unauthorized user" : (user + " (ID: " + user.getId() + ", personal ID: " + user.getPersonalID() + ")")) + " does not have permission to read " + path);
 				}
 				return allowed;
 			}
