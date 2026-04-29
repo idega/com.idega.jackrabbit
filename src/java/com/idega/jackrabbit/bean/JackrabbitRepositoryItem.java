@@ -38,7 +38,7 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	private User user;
 
 	private Long size;
-	private Boolean collection, exists;
+	private Boolean collection, exists, canRead;
 	private URL url;
 
 	public JackrabbitRepositoryItem(String path, User user) {
@@ -89,6 +89,11 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	}
 
 	@Override
+	public long length() {
+		return getLength();
+	}
+
+	@Override
 	public boolean delete() {
 		try {
 			return getRepositoryService().delete(path, user);
@@ -130,6 +135,22 @@ public class JackrabbitRepositoryItem extends JCRItem {
 			}
 		}
 		return exists == null ? Boolean.FALSE : exists;
+	}
+
+	@Override
+	public boolean canRead() {
+		if (canRead == null) {
+			InputStream stream = null;
+			try {
+				stream = getRepositoryService().getFileContents(user, path);
+				canRead = stream != null;
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				IOUtil.close(stream);
+			}
+		}
+		return canRead == null ? Boolean.FALSE : canRead;
 	}
 
 	@Override
