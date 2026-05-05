@@ -341,4 +341,10 @@ public class JackrabbitRepositoryItem extends JCRItem {
 	private RepositoryService getRepositoryService() {
 		return ELUtil.getInstance().getBean(RepositoryService.class);
 	}
+
+	@Override
+	public String toString() {
+		return getPath();
+	}
+
 }
